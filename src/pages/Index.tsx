@@ -112,25 +112,29 @@ const Index = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardHeader>
-              <Upload className="h-8 w-8 text-blue-600 mb-2" />
-              <CardTitle>Create Flipbook</CardTitle>
-              <CardDescription>
-                Upload and create new flipbooks
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          <Link to="/my-flipbooks">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader>
+                <Upload className="h-8 w-8 text-blue-600 mb-2" />
+                <CardTitle>Create Flipbook</CardTitle>
+                <CardDescription>
+                  Upload and create new flipbooks
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardHeader>
-              <BookOpen className="h-8 w-8 text-green-600 mb-2" />
-              <CardTitle>My Flipbooks</CardTitle>
-              <CardDescription>
-                Manage your created flipbooks
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          <Link to="/my-flipbooks">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader>
+                <BookOpen className="h-8 w-8 text-green-600 mb-2" />
+                <CardTitle>My Flipbooks</CardTitle>
+                <CardDescription>
+                  Manage your created flipbooks
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
 
           <Card className="cursor-pointer hover:shadow-md transition-shadow">
             <CardHeader>
