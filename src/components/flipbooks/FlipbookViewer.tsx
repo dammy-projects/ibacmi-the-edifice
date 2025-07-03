@@ -9,7 +9,8 @@ import {
   RotateCcw, 
   Maximize2,
   Home,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { useFlipbookPages } from '@/hooks/useFlipbookPages';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from '@/components/ui/carousel';
@@ -20,7 +21,7 @@ interface FlipbookViewerProps {
 }
 
 const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
-  const { data: pages, isLoading, error } = useFlipbookPages(flipbookId);
+  const { data: pages, isLoading, error, refetch } = useFlipbookPages(flipbookId);
   const [currentPage, setCurrentPage] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -53,6 +54,11 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const handleImageError = (pageId: string, imageUrl: string) => {
     console.error(`Failed to load image for page ${pageId}:`, imageUrl);
     setImageLoadingStates(prev => ({ ...prev, [pageId]: false }));
+  };
+
+  const handleRefresh = () => {
+    console.log('Refreshing flipbook pages...');
+    refetch();
   };
 
   const handlePrevPage = () => {
@@ -116,12 +122,18 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
         <div className="text-white text-center">
           <p className="text-xl text-red-400 mb-4">Error loading flipbook</p>
           <p className="text-sm text-gray-400 mb-4">{error.message}</p>
-          {onClose && (
-            <Button onClick={onClose} variant="outline">
-              <Home className="h-4 w-4 mr-2" />
-              Back to Flipbooks
+          <div className="flex items-center justify-center gap-4">
+            <Button onClick={handleRefresh} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
             </Button>
-          )}
+            {onClose && (
+              <Button onClick={onClose} variant="outline">
+                <Home className="h-4 w-4 mr-2" />
+                Back to Flipbooks
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -133,12 +145,18 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
         <div className="text-white text-center">
           <p className="text-xl mb-4">No pages found in this flipbook</p>
           <p className="text-sm text-gray-400 mb-4">The PDF might still be processing or there was an error during conversion.</p>
-          {onClose && (
-            <Button onClick={onClose} variant="outline">
-              <Home className="h-4 w-4 mr-2" />
-              Back to Flipbooks
+          <div className="flex items-center justify-center gap-4">
+            <Button onClick={handleRefresh} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Check Again
             </Button>
-          )}
+            {onClose && (
+              <Button onClick={onClose} variant="outline">
+                <Home className="h-4 w-4 mr-2" />
+                Back to Flipbooks
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -210,6 +228,15 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
+
+          <Button
+            onClick={handleRefresh}
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -232,15 +259,19 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                 >
                   <Card className="shadow-2xl overflow-hidden bg-white relative">
                     {imageLoadingStates[page.id] && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
                         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                       </div>
                     )}
                     <img
                       src={page.image_url}
                       alt={`Page ${page.page_number}`}
-                      className="max-w-full max-h-[80vh] object-contain"
-                      style={{ maxWidth: '800px' }}
+                      className="max-w-full max-h-[80vh] object-contain block"
+                      style={{ 
+                        maxWidth: '800px',
+                        minHeight: '400px',
+                        backgroundColor: '#f8f9fa'
+                      }}
                       onLoadStart={() => handleImageLoadStart(page.id)}
                       onLoad={() => handleImageLoad(page.id)}
                       onError={() => handleImageError(page.id, page.image_url)}
