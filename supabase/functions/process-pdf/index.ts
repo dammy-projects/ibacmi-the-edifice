@@ -202,11 +202,13 @@ serve(async (req) => {
         
         // Convert PDF page to SVG image
         const pageImageDataUrl = await convertPDFPageToImage(pdfBytes, pageNum)
+        console.log(`Generated SVG for page ${pageNum}`)
         
         // Upload SVG directly to storage as a file
         const imageFileName = `${fileData.flipbook_id}/page-${pageNum}.svg`
         const svgContent = atob(pageImageDataUrl.split(',')[1])
         
+        console.log(`Uploading ${imageFileName} to storage`)
         const { error: uploadError } = await supabaseClient.storage
           .from('flipbook-assets')
           .upload(imageFileName, svgContent, {
@@ -227,7 +229,8 @@ serve(async (req) => {
         console.log(`Created page ${pageNum} with image: ${publicUrlData.publicUrl}`)
 
         // Create page record
-        const { error: pageError } = await supabaseClient
+        console.log(`Inserting page record for page ${pageNum}`)
+        const { data: pageData, error: pageError } = await supabaseClient
           .from('pages')
           .insert({
             flipbook_id: fileData.flipbook_id,
@@ -235,17 +238,25 @@ serve(async (req) => {
             image_url: publicUrlData.publicUrl,
             text_content: `Content from page ${pageNum} of ${fileData.file_name}`
           })
+          .select()
 
         if (pageError) {
           console.error(`Error creating page ${pageNum}:`, pageError)
+          console.error(`Page error details:`, JSON.stringify(pageError))
           continue
         }
 
+        console.log(`Successfully inserted page record:`, pageData)
+
         // Update progress
-        await supabaseClient
+        const { error: updateError } = await supabaseClient
           .from('flipbook_files')
           .update({ converted_pages: pageNum })
           .eq('id', fileId)
+
+        if (updateError) {
+          console.error(`Error updating progress for page ${pageNum}:`, updateError)
+        }
 
         console.log(`Successfully created page ${pageNum}/${actualPageCount}`)
 
@@ -253,6 +264,7 @@ serve(async (req) => {
         await new Promise(resolve => setTimeout(resolve, 200))
       } catch (pageError) {
         console.error(`Error processing page ${pageNum}:`, pageError)
+        console.error(`Page error stack:`, pageError.stack)
         continue
       }
     }
