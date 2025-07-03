@@ -126,30 +126,39 @@ export type Database = {
       }
       flipbook_files: {
         Row: {
+          conversion_status: string | null
+          converted_pages: number | null
           file_name: string
           file_path: string
           file_size: number | null
           flipbook_id: string | null
           id: string
           mime_type: string | null
+          total_pages: number | null
           uploaded_at: string | null
         }
         Insert: {
+          conversion_status?: string | null
+          converted_pages?: number | null
           file_name: string
           file_path: string
           file_size?: number | null
           flipbook_id?: string | null
           id?: string
           mime_type?: string | null
+          total_pages?: number | null
           uploaded_at?: string | null
         }
         Update: {
+          conversion_status?: string | null
+          converted_pages?: number | null
           file_name?: string
           file_path?: string
           file_size?: number | null
           flipbook_id?: string | null
           id?: string
           mime_type?: string | null
+          total_pages?: number | null
           uploaded_at?: string | null
         }
         Relationships: [
