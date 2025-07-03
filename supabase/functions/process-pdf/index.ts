@@ -74,53 +74,49 @@ async function getPDFPageCount(pdfBytes: Uint8Array): Promise<number> {
   }
 }
 
-// Convert PDF page to base64 image
+// Convert PDF page to base64 image - simplified version for Deno
 async function convertPDFPageToImage(pdfBytes: Uint8Array, pageNumber: number): Promise<string> {
   try {
-    // For this demo, we'll create a canvas-based image representation
-    // In a real implementation, you'd use a PDF-to-image library
-    const canvas = new OffscreenCanvas(800, 1200);
-    const ctx = canvas.getContext('2d');
+    // Create a simple SVG image instead of using Canvas (which may not be available)
+    const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="1200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="800" height="1200" fill="#ffffff" stroke="#e0e0e0" stroke-width="1"/>
+  <text x="400" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#333333">
+    Page ${pageNumber}
+  </text>
+  <text x="50" y="200" font-family="Arial, sans-serif" font-size="16" fill="#333333">
+    Content from PDF page ${pageNumber}
+  </text>
+  <text x="50" y="230" font-family="Arial, sans-serif" font-size="14" fill="#666666">
+    Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+  </text>
+  <text x="50" y="260" font-family="Arial, sans-serif" font-size="14" fill="#666666">
+    Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+  </text>
+  <text x="50" y="290" font-family="Arial, sans-serif" font-size="14" fill="#666666">
+    Ut enim ad minim veniam, quis nostrud exercitation ullamco.
+  </text>
+  <text x="50" y="320" font-family="Arial, sans-serif" font-size="14" fill="#666666">
+    Laboris nisi ut aliquip ex ea commodo consequat.
+  </text>
+  <text x="50" y="350" font-family="Arial, sans-serif" font-size="14" fill="#666666">
+    Duis aute irure dolor in reprehenderit in voluptate velit esse.
+  </text>
+  <text x="50" y="380" font-family="Arial, sans-serif" font-size="14" fill="#666666">
+    Cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat.
+  </text>
+  <rect x="50" y="450" width="700" height="1" fill="#e0e0e0"/>
+  <text x="50" y="500" font-family="Arial, sans-serif" font-size="12" fill="#999999">
+    This is a mock page generated from your PDF content.
+  </text>
+  <text x="50" y="520" font-family="Arial, sans-serif" font-size="12" fill="#999999">
+    Actual PDF text extraction will be implemented in the next version.
+  </text>
+</svg>`;
     
-    if (!ctx) {
-      throw new Error('Failed to get canvas context');
-    }
-    
-    // Create a document-style background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 800, 1200);
-    
-    // Add some content to simulate a page
-    ctx.fillStyle = '#333333';
-    ctx.font = '24px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Page ${pageNumber}`, 400, 100);
-    
-    // Add some mock content lines
-    ctx.font = '16px Arial';
-    ctx.textAlign = 'left';
-    const lines = [
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-      'Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      'Ut enim ad minim veniam, quis nostrud exercitation ullamco.',
-      'Laboris nisi ut aliquip ex ea commodo consequat.',
-      'Duis aute irure dolor in reprehenderit in voluptate velit esse.',
-      'Cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat.',
-      'Cupidatat non proident, sunt in culpa qui officia deserunt.'
-    ];
-    
-    lines.forEach((line, index) => {
-      ctx.fillText(line, 50, 200 + (index * 30));
-    });
-    
-    // Convert to blob and then to base64
-    const blob = await canvas.convertToBlob({ type: 'image/png' });
-    const arrayBuffer = await blob.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-    
-    // Convert to base64
-    const base64 = btoa(String.fromCharCode.apply(null, Array.from(uint8Array)));
-    return `data:image/png;base64,${base64}`;
+    // Convert SVG to base64
+    const base64 = btoa(svgContent);
+    return `data:image/svg+xml;base64,${base64}`;
   } catch (error) {
     console.error('Error converting page to image:', error);
     throw new Error(`Failed to convert page ${pageNumber} to image`);
@@ -204,18 +200,17 @@ serve(async (req) => {
       try {
         console.log(`Processing page ${pageNum}/${actualPageCount}`)
         
-        // Convert PDF page to image
+        // Convert PDF page to SVG image
         const pageImageDataUrl = await convertPDFPageToImage(pdfBytes, pageNum)
         
-        // Upload image to storage
-        const imageFileName = `${fileData.flipbook_id}/page-${pageNum}.png`
-        const base64Data = pageImageDataUrl.split(',')[1]
-        const imageBytes = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
+        // Upload SVG directly to storage as a file
+        const imageFileName = `${fileData.flipbook_id}/page-${pageNum}.svg`
+        const svgContent = atob(pageImageDataUrl.split(',')[1])
         
         const { error: uploadError } = await supabaseClient.storage
           .from('flipbook-assets')
-          .upload(imageFileName, imageBytes, {
-            contentType: 'image/png',
+          .upload(imageFileName, svgContent, {
+            contentType: 'image/svg+xml',
             upsert: true
           })
 
