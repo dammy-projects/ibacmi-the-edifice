@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Upload, FileText, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useFlipbookFiles, useUploadPDF, useDeleteFlipbookFile } from '@/hooks/useFlipbookFiles';
+import ReprocessPDF from './ReprocessPDF';
 
 interface PDFUploadProps {
   flipbookId: string;
@@ -154,15 +155,26 @@ const PDFUpload = ({ flipbookId }: PDFUploadProps) => {
                     )}
                   </div>
                   
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteFile.mutate(file.id)}
-                    disabled={deleteFile.isPending}
-                    className="ml-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    {file.conversion_status === 'failed' && (
+                      <ReprocessPDF 
+                        fileId={file.id}
+                        filePath={file.file_path}
+                        onSuccess={() => {
+                          // Refetch files to update the UI
+                          window.location.reload();
+                        }}
+                      />
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteFile.mutate(file.id)}
+                      disabled={deleteFile.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

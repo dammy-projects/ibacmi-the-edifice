@@ -157,6 +157,9 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
               </Button>
             )}
           </div>
+          <div className="mt-4">
+            <p className="text-xs text-gray-500 mb-2">If the issue persists, you may need to reprocess the PDF from your flipbooks page.</p>
+          </div>
         </div>
       </div>
     );
