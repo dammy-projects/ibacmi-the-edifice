@@ -74,53 +74,10 @@ async function getPDFPageCount(pdfBytes: Uint8Array): Promise<number> {
   }
 }
 
-// Convert PDF page to base64 image - simplified version for Deno
-async function convertPDFPageToImage(pdfBytes: Uint8Array, pageNumber: number): Promise<string> {
-  try {
-    // Create a simple SVG image instead of using Canvas (which may not be available)
-    const svgContent = `<?xml version="1.0" encoding="UTF-8"?>
-<svg width="800" height="1200" xmlns="http://www.w3.org/2000/svg">
-  <rect width="800" height="1200" fill="#ffffff" stroke="#e0e0e0" stroke-width="1"/>
-  <text x="400" y="100" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#333333">
-    Page ${pageNumber}
-  </text>
-  <text x="50" y="200" font-family="Arial, sans-serif" font-size="16" fill="#333333">
-    Content from PDF page ${pageNumber}
-  </text>
-  <text x="50" y="230" font-family="Arial, sans-serif" font-size="14" fill="#666666">
-    Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-  </text>
-  <text x="50" y="260" font-family="Arial, sans-serif" font-size="14" fill="#666666">
-    Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-  </text>
-  <text x="50" y="290" font-family="Arial, sans-serif" font-size="14" fill="#666666">
-    Ut enim ad minim veniam, quis nostrud exercitation ullamco.
-  </text>
-  <text x="50" y="320" font-family="Arial, sans-serif" font-size="14" fill="#666666">
-    Laboris nisi ut aliquip ex ea commodo consequat.
-  </text>
-  <text x="50" y="350" font-family="Arial, sans-serif" font-size="14" fill="#666666">
-    Duis aute irure dolor in reprehenderit in voluptate velit esse.
-  </text>
-  <text x="50" y="380" font-family="Arial, sans-serif" font-size="14" fill="#666666">
-    Cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat.
-  </text>
-  <rect x="50" y="450" width="700" height="1" fill="#e0e0e0"/>
-  <text x="50" y="500" font-family="Arial, sans-serif" font-size="12" fill="#999999">
-    This is a mock page generated from your PDF content.
-  </text>
-  <text x="50" y="520" font-family="Arial, sans-serif" font-size="12" fill="#999999">
-    Actual PDF text extraction will be implemented in the next version.
-  </text>
-</svg>`;
-    
-    // Convert SVG to base64
-    const base64 = btoa(svgContent);
-    return `data:image/svg+xml;base64,${base64}`;
-  } catch (error) {
-    console.error('Error converting page to image:', error);
-    throw new Error(`Failed to convert page ${pageNumber} to image`);
-  }
+// Create a simple placeholder image URL for each page
+function createPageImageUrl(pageNumber: number, flipbookId: string): string {
+  // Use a direct image generation service that's guaranteed to work
+  return `https://via.placeholder.com/800x1200/ffffff/333333?text=Page+${pageNumber}`;
 }
 
 serve(async (req) => {
@@ -195,58 +152,40 @@ serve(async (req) => {
       .delete()
       .eq('flipbook_id', fileData.flipbook_id)
 
-    // Create page images
+    // Create page records with simple placeholder images
     for (let pageNum = 1; pageNum <= actualPageCount; pageNum++) {
       try {
-        console.log(`Processing page ${pageNum}/${actualPageCount}`)
+        console.log(`Creating page ${pageNum}/${actualPageCount}`)
         
-        // Convert PDF page to SVG image
-        const pageImageDataUrl = await convertPDFPageToImage(pdfBytes, pageNum)
-        console.log(`Generated SVG for page ${pageNum}`)
-        
-        // Upload SVG directly to storage as a file
-        const imageFileName = `${fileData.flipbook_id}/page-${pageNum}.svg`
-        const svgContent = atob(pageImageDataUrl.split(',')[1])
-        
-        console.log(`Uploading ${imageFileName} to storage`)
-        const { error: uploadError } = await supabaseClient.storage
-          .from('flipbook-assets')
-          .upload(imageFileName, svgContent, {
-            contentType: 'image/svg+xml',
-            upsert: true
-          })
+        // Use simple placeholder image
+        const pageImageUrl = createPageImageUrl(pageNum, fileData.flipbook_id)
+        console.log(`Using image URL: ${pageImageUrl}`)
 
-        if (uploadError) {
-          console.error(`Error uploading page ${pageNum} image:`, uploadError)
-          continue
-        }
-
-        // Get public URL for the image
-        const { data: publicUrlData } = supabaseClient.storage
-          .from('flipbook-assets')
-          .getPublicUrl(imageFileName)
-
-        console.log(`Created page ${pageNum} with image: ${publicUrlData.publicUrl}`)
-
-        // Create page record
-        console.log(`Inserting page record for page ${pageNum}`)
+        // Create page record directly
+        console.log(`Inserting page record for page ${pageNum} with flipbook_id: ${fileData.flipbook_id}`)
         const { data: pageData, error: pageError } = await supabaseClient
           .from('pages')
           .insert({
             flipbook_id: fileData.flipbook_id,
             page_number: pageNum,
-            image_url: publicUrlData.publicUrl,
+            image_url: pageImageUrl,
             text_content: `Content from page ${pageNum} of ${fileData.file_name}`
           })
           .select()
 
         if (pageError) {
-          console.error(`Error creating page ${pageNum}:`, pageError)
-          console.error(`Page error details:`, JSON.stringify(pageError))
+          console.error(`ERROR creating page ${pageNum}:`, pageError)
+          console.error(`Error details:`, JSON.stringify(pageError, null, 2))
+          
+          // Try to continue with other pages
           continue
         }
 
-        console.log(`Successfully inserted page record:`, pageData)
+        if (pageData && pageData.length > 0) {
+          console.log(`SUCCESS: Created page record ${pageNum}:`, pageData[0])
+        } else {
+          console.log(`WARNING: Page created but no data returned for page ${pageNum}`)
+        }
 
         // Update progress
         const { error: updateError } = await supabaseClient
@@ -256,15 +195,15 @@ serve(async (req) => {
 
         if (updateError) {
           console.error(`Error updating progress for page ${pageNum}:`, updateError)
+        } else {
+          console.log(`Updated progress: ${pageNum}/${actualPageCount}`)
         }
 
-        console.log(`Successfully created page ${pageNum}/${actualPageCount}`)
-
-        // Small delay to prevent overwhelming the system
-        await new Promise(resolve => setTimeout(resolve, 200))
+        // Small delay
+        await new Promise(resolve => setTimeout(resolve, 100))
       } catch (pageError) {
-        console.error(`Error processing page ${pageNum}:`, pageError)
-        console.error(`Page error stack:`, pageError.stack)
+        console.error(`EXCEPTION processing page ${pageNum}:`, pageError)
+        console.error(`Exception details:`, pageError.message)
         continue
       }
     }
