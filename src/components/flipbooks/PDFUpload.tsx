@@ -4,38 +4,44 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileText, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
-import { useFlipbookFiles, useUploadPDF, useDeleteFlipbookFile } from '@/hooks/useFlipbookFiles';
+import { Upload, Images, Trash2, AlertCircle, CheckCircle } from 'lucide-react';
+import { useFlipbookFiles, useUploadImages, useDeleteFlipbookFile } from '@/hooks/useFlipbookFiles';
 import ReprocessPDF from './ReprocessPDF';
 
-interface PDFUploadProps {
+interface ImageUploadProps {
   flipbookId: string;
 }
 
-const PDFUpload = ({ flipbookId }: PDFUploadProps) => {
+const ImageUpload = ({ flipbookId }: ImageUploadProps) => {
   const { data: files, isLoading } = useFlipbookFiles(flipbookId);
-  const uploadPDF = useUploadPDF();
+  const uploadImages = useUploadImages();
   const deleteFile = useDeleteFlipbookFile();
 
   const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
-    if (file.type !== 'application/pdf') {
-      alert('Please select a PDF file');
+    // Check if all files are images
+    const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const invalidFiles = Array.from(files).filter(file => !validImageTypes.includes(file.type));
+    
+    if (invalidFiles.length > 0) {
+      alert('Please select only image files (JPEG, PNG, WebP)');
       return;
     }
 
-    if (file.size > 50 * 1024 * 1024) { // 50MB limit
-      alert('File size must be less than 50MB');
+    // Check file sizes (5MB limit per image)
+    const oversizedFiles = Array.from(files).filter(file => file.size > 5 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      alert('Each image must be less than 5MB');
       return;
     }
 
-    uploadPDF.mutate({ file, flipbookId });
+    uploadImages.mutate({ files: Array.from(files), flipbookId });
     
     // Reset input
     event.target.value = '';
-  }, [flipbookId, uploadPDF]);
+  }, [flipbookId, uploadImages]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -44,9 +50,9 @@ const PDFUpload = ({ flipbookId }: PDFUploadProps) => {
       case 'failed':
         return <AlertCircle className="h-4 w-4 text-red-600" />;
       case 'processing':
-        return <FileText className="h-4 w-4 text-blue-600 animate-pulse" />;
+        return <Images className="h-4 w-4 text-blue-600 animate-pulse" />;
       default:
-        return <FileText className="h-4 w-4 text-gray-600" />;
+        return <Images className="h-4 w-4 text-gray-600" />;
     }
   };
 
@@ -80,44 +86,45 @@ const PDFUpload = ({ flipbookId }: PDFUploadProps) => {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          PDF Files
+          <Images className="h-5 w-5" />
+          Flipbook Images
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Upload Area */}
         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
           <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-600 mb-2">Upload PDF to convert to flipbook pages</p>
+          <p className="text-gray-600 mb-2">Upload multiple images to create your flipbook</p>
           <input
             type="file"
-            accept=".pdf"
+            accept="image/*"
+            multiple
             onChange={handleFileUpload}
             className="hidden"
-            id="pdf-upload"
-            disabled={uploadPDF.isPending}
+            id="image-upload"
+            disabled={uploadImages.isPending}
           />
-          <label htmlFor="pdf-upload">
+          <label htmlFor="image-upload">
             <Button 
               variant="outline" 
-              disabled={uploadPDF.isPending}
+              disabled={uploadImages.isPending}
               className="cursor-pointer"
               asChild
             >
               <span>
-                {uploadPDF.isPending ? 'Uploading...' : 'Choose PDF File'}
+                {uploadImages.isPending ? 'Uploading...' : 'Choose Images'}
               </span>
             </Button>
           </label>
           <p className="text-xs text-gray-500 mt-2">
-            Maximum file size: 50MB
+            Maximum file size: 5MB per image. Supported formats: JPEG, PNG, WebP
           </p>
         </div>
 
         {/* Files List */}
         {files && files.length > 0 && (
           <div className="space-y-3">
-            <h4 className="font-medium text-gray-900">Uploaded Files</h4>
+            <h4 className="font-medium text-gray-900">Uploaded Images</h4>
             {files.map((file) => (
               <div key={file.id} className="border rounded-lg p-4">
                 <div className="flex items-start justify-between">
@@ -135,7 +142,7 @@ const PDFUpload = ({ flipbookId }: PDFUploadProps) => {
                     <div className="text-xs text-gray-500 space-y-1">
                       <p>Size: {(file.file_size / (1024 * 1024)).toFixed(2)} MB</p>
                       {file.total_pages && (
-                        <p>Pages: {file.total_pages}</p>
+                        <p>Images: {file.total_pages}</p>
                       )}
                       <p>Uploaded: {new Date(file.uploaded_at).toLocaleDateString()}</p>
                     </div>
@@ -144,7 +151,7 @@ const PDFUpload = ({ flipbookId }: PDFUploadProps) => {
                     {file.conversion_status === 'processing' && file.total_pages && file.converted_pages !== undefined && (
                       <div className="mt-2">
                         <div className="flex justify-between text-xs text-gray-600 mb-1">
-                          <span>Converting pages...</span>
+                          <span>Processing images...</span>
                           <span>{file.converted_pages}/{file.total_pages}</span>
                         </div>
                         <Progress 
@@ -185,4 +192,4 @@ const PDFUpload = ({ flipbookId }: PDFUploadProps) => {
   );
 };
 
-export default PDFUpload;
+export default ImageUpload;

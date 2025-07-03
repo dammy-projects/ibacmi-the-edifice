@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { X, Upload, Save, ArrowLeft } from 'lucide-react';
 import { useCreateFlipbook, useUpdateFlipbook, useUploadCoverImage, type Flipbook } from '@/hooks/useFlipbooks';
 import { useCategories, useTags } from '@/hooks/useCategories';
-import PDFUpload from './PDFUpload';
+import ImageUpload from './PDFUpload';
 
 const flipbookSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -274,12 +274,12 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
           </TabsContent>
 
           <TabsContent value="content" className="space-y-6">
-            {flipbook && <PDFUpload flipbookId={flipbook.id} />}
+            {flipbook && <ImageUpload flipbookId={flipbook.id} />}
             {!flipbook && (
               <Card>
                 <CardContent className="p-6 text-center">
                   <p className="text-gray-500">
-                    Save your flipbook first to upload PDF content.
+                    Save your flipbook first to upload images.
                   </p>
                 </CardContent>
               </Card>

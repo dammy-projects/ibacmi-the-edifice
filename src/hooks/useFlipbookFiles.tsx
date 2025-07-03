@@ -38,35 +38,54 @@ export const useFlipbookFiles = (flipbookId?: string) => {
   });
 };
 
-export const useUploadPDF = () => {
+export const useUploadImages = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ file, flipbookId }: { file: File; flipbookId: string }) => {
+    mutationFn: async ({ files, flipbookId }: { files: File[]; flipbookId: string }) => {
       if (!user) throw new Error('User not authenticated');
       
-      // Upload file to storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/pdfs/${Date.now()}.${fileExt}`;
+      const results = [];
       
-      const { error: uploadError } = await supabase.storage
-        .from('flipbook-assets')
-        .upload(fileName, file);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Upload file to storage
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${user.id}/images/${flipbookId}/${Date.now()}-${i + 1}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('flipbook-assets')
+          .upload(fileName, file);
+        
+        if (uploadError) {
+          console.error('Upload error for file', file.name, uploadError);
+          continue;
+        }
+        
+        results.push({ fileName, originalName: file.name, size: file.size });
+      }
       
-      if (uploadError) throw uploadError;
+      if (results.length === 0) {
+        throw new Error('No files were uploaded successfully');
+      }
       
-      // Create file record
+      // Calculate total size
+      const totalSize = results.reduce((sum, result) => sum + result.size, 0);
+      
+      // Create file record for the batch
       const { data: fileRecord, error: recordError } = await supabase
         .from('flipbook_files')
         .insert([
           {
             flipbook_id: flipbookId,
-            file_name: file.name,
-            file_path: fileName,
-            file_size: file.size,
-            mime_type: file.type,
+            file_name: `${results.length} images`,
+            file_path: `${user.id}/images/${flipbookId}/`,
+            file_size: totalSize,
+            mime_type: 'image/collection',
             conversion_status: 'pending',
+            total_pages: results.length,
           }
         ])
         .select()
@@ -74,13 +93,17 @@ export const useUploadPDF = () => {
       
       if (recordError) throw recordError;
       
-      // Trigger PDF processing
-      const { error: processError } = await supabase.functions.invoke('process-pdf', {
-        body: { fileId: fileRecord.id, filePath: fileName }
+      // Trigger image processing
+      const { error: processError } = await supabase.functions.invoke('process-images', {
+        body: { 
+          fileId: fileRecord.id, 
+          flipbookId,
+          images: results
+        }
       });
       
       if (processError) {
-        console.error('PDF processing error:', processError);
+        console.error('Image processing error:', processError);
         // Don't throw here - let the file record exist even if processing fails
       }
       
@@ -89,17 +112,17 @@ export const useUploadPDF = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['flipbook-files', variables.flipbookId] });
       toast({
-        title: "PDF Uploaded",
-        description: "Your PDF is being processed and will be converted to flipbook pages.",
+        title: "Images Uploaded",
+        description: "Your images are being processed and will be added to your flipbook.",
       });
     },
     onError: (error) => {
       toast({
         title: "Upload Failed",
-        description: "Failed to upload PDF. Please try again.",
+        description: "Failed to upload images. Please try again.",
         variant: "destructive",
       });
-      console.error('PDF upload error:', error);
+      console.error('Image upload error:', error);
     },
   });
 };
