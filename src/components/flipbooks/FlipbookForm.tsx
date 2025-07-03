@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -98,8 +97,11 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
   const onSubmit = async (data: FlipbookFormData) => {
     try {
       const flipbookData = {
-        ...data,
+        title: data.title,
+        description: data.description,
         cover_image: coverImage,
+        visibility: data.visibility,
+        is_published: data.is_published,
       };
 
       if (flipbook) {
@@ -220,7 +222,6 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
               </CardContent>
             </Card>
 
-            {/* Categories */}
             <Card>
               <CardHeader>
                 <CardTitle>Categories</CardTitle>
@@ -251,7 +252,6 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
               </CardContent>
             </Card>
 
-            {/* Tags */}
             <Card>
               <CardHeader>
                 <CardTitle>Tags</CardTitle>
