@@ -58,10 +58,10 @@ const Index = () => {
         <div className="container mx-auto px-4 py-8 sm:py-16 flex-1">
           <div className="text-center mb-8 sm:mb-12">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4 animate-fade-in">
-            the edifice Flipbook Platform
+            The Edifice 
             </h1>
             <p className="text-lg sm:text-xl text-muted-foreground mb-6 sm:mb-8 animate-fade-in-delay">
-              IBA College of Mindanao, Inc.
+              The official school publication of IBA College of Mindanao, Inc.
             </p>
           </div>
 
