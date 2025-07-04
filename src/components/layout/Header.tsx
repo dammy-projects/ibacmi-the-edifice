@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
 import { LogOut, User, BookOpen, Users, Menu } from "lucide-react";
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Header = () => {
   const { user, signOut } = useAuth();
@@ -21,11 +22,35 @@ const Header = () => {
         return;
       }
       console.log('Sign out successful');
-      navigate('/');
-      setIsMobileMenuOpen(false);
+      
+      // Force a small delay to ensure state updates
+      setTimeout(() => {
+        navigate('/');
+        setIsMobileMenuOpen(false);
+        
+        // Force reload if still signed in after 1 second
+        setTimeout(() => {
+          if (user) {
+            console.log('User still signed in, forcing reload');
+            window.location.reload();
+          }
+        }, 1000);
+      }, 100);
     } catch (error) {
       console.error('Sign out error:', error);
       alert('Failed to sign out. Please try again.');
+    }
+  };
+
+  const handleDirectSignOut = async () => {
+    try {
+      console.log('Direct sign out...');
+      await supabase.auth.signOut();
+      localStorage.clear();
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Direct sign out error:', error);
+      window.location.href = '/';
     }
   };
 
@@ -98,7 +123,7 @@ const Header = () => {
               <User className="h-4 w-4 mr-2" />
               Profile
             </Button>
-            <Button variant="outline" size="sm" onClick={handleSignOut}>
+            <Button variant="outline" size="sm" onClick={handleDirectSignOut}>
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out
             </Button>
@@ -137,7 +162,7 @@ const Header = () => {
                 <User className="h-4 w-4 mr-2" />
                 Profile
               </Button>
-              <Button variant="outline" size="sm" onClick={handleSignOut} className="w-full justify-start">
+              <Button variant="outline" size="sm" onClick={handleDirectSignOut} className="w-full justify-start">
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
