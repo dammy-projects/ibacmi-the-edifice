@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Eye, Trash2, Upload } from 'lucide-react';
-import { useFlipbooks, type Flipbook } from '@/hooks/useFlipbooks';
+import { useFlipbooks, useDeleteFlipbook, type Flipbook } from '@/hooks/useFlipbooks';
 import { Link } from 'react-router-dom';
 
 interface FlipbookListProps {
@@ -12,6 +12,13 @@ interface FlipbookListProps {
 
 const FlipbookList = ({ onEdit }: FlipbookListProps) => {
   const { data: flipbooks, isLoading, error } = useFlipbooks();
+  const deleteFlipbook = useDeleteFlipbook();
+
+  const handleDelete = async (flipbookId: string) => {
+    if (window.confirm('Are you sure you want to delete this flipbook? This action cannot be undone.')) {
+      await deleteFlipbook.mutateAsync(flipbookId);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -104,7 +111,13 @@ const FlipbookList = ({ onEdit }: FlipbookListProps) => {
                   <Edit className="h-4 w-4" />
                 </Button>
                 
-                <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-red-600 hover:text-red-700" 
+                  onClick={() => handleDelete(flipbook.id)}
+                  disabled={deleteFlipbook.isPending}
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>

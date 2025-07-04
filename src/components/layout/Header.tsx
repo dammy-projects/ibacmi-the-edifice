@@ -12,9 +12,21 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
-    setIsMobileMenuOpen(false);
+    try {
+      console.log('Signing out...');
+      const { error } = await signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        alert('Failed to sign out. Please try again.');
+        return;
+      }
+      console.log('Sign out successful');
+      navigate('/');
+      setIsMobileMenuOpen(false);
+    } catch (error) {
+      console.error('Sign out error:', error);
+      alert('Failed to sign out. Please try again.');
+    }
   };
 
   const handleProfileClick = () => {

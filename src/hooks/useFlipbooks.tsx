@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
@@ -152,6 +151,73 @@ export const useUploadCoverImage = () => {
         variant: "destructive",
       });
       console.error('Error uploading cover image:', error);
+    },
+  });
+};
+
+export const useDeleteFlipbook = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async (flipbookId: string) => {
+      // First, delete all associated files from storage
+      const { data: files, error: filesError } = await supabase
+        .from('flipbook_files')
+        .select('file_path')
+        .eq('flipbook_id', flipbookId);
+      
+      if (filesError) throw filesError;
+      
+      // Delete files from storage
+      if (files && files.length > 0) {
+        const filePaths = files.map(file => file.file_path);
+        const { error: storageError } = await supabase.storage
+          .from('flipbook-assets')
+          .remove(filePaths);
+        
+        if (storageError) throw storageError;
+      }
+      
+      // Delete all associated records
+      const { error: filesDeleteError } = await supabase
+        .from('flipbook_files')
+        .delete()
+        .eq('flipbook_id', flipbookId);
+      
+      if (filesDeleteError) throw filesDeleteError;
+      
+      // Delete flipbook pages
+      const { error: pagesDeleteError } = await supabase
+        .from('pages')
+        .delete()
+        .eq('flipbook_id', flipbookId);
+      
+      if (pagesDeleteError) throw pagesDeleteError;
+      
+      // Finally, delete the flipbook itself
+      const { error: flipbookDeleteError } = await supabase
+        .from('flipbooks')
+        .delete()
+        .eq('id', flipbookId);
+      
+      if (flipbookDeleteError) throw flipbookDeleteError;
+      
+      return flipbookId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['flipbooks'] });
+      toast({
+        title: "Success",
+        description: "Flipbook deleted successfully!",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to delete flipbook. Please try again.",
+        variant: "destructive",
+      });
+      console.error('Error deleting flipbook:', error);
     },
   });
 };
