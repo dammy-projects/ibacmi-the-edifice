@@ -3,14 +3,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { LogOut, User, BookOpen, Upload, Search, Settings } from "lucide-react";
+import { Upload, Search, Settings, BookOpen } from "lucide-react";
+import Header from "@/components/layout/Header";
 
 const Index = () => {
-  const { user, signOut, loading } = useAuth();
-
-  const handleSignOut = async () => {
-    await signOut();
-  };
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -85,29 +82,8 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <BookOpen className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Flipbook Platform</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <User className="h-4 w-4" />
-                <span>Welcome, {user.email}</span>
-              </div>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background">
+      <Header />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
@@ -115,7 +91,7 @@ const Index = () => {
           <Link to="/my-flipbooks">
             <Card className="cursor-pointer hover:shadow-md transition-shadow">
               <CardHeader>
-                <Upload className="h-8 w-8 text-blue-600 mb-2" />
+                <Upload className="h-8 w-8 text-primary mb-2" />
                 <CardTitle>Create Flipbook</CardTitle>
                 <CardDescription>
                   Upload and create new flipbooks
@@ -127,7 +103,7 @@ const Index = () => {
           <Link to="/my-flipbooks">
             <Card className="cursor-pointer hover:shadow-md transition-shadow">
               <CardHeader>
-                <BookOpen className="h-8 w-8 text-green-600 mb-2" />
+                <Upload className="h-8 w-8 text-primary mb-2" />
                 <CardTitle>My Flipbooks</CardTitle>
                 <CardDescription>
                   Manage your created flipbooks
@@ -138,7 +114,7 @@ const Index = () => {
 
           <Card className="cursor-pointer hover:shadow-md transition-shadow">
             <CardHeader>
-              <Search className="h-8 w-8 text-purple-600 mb-2" />
+              <Search className="h-8 w-8 text-primary mb-2" />
               <CardTitle>Browse</CardTitle>
               <CardDescription>
                 Discover public flipbooks
@@ -146,15 +122,17 @@ const Index = () => {
             </CardHeader>
           </Card>
 
-          <Card className="cursor-pointer hover:shadow-md transition-shadow">
-            <CardHeader>
-              <Settings className="h-8 w-8 text-orange-600 mb-2" />
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>
-                Manage your account settings
-              </CardDescription>
-            </CardHeader>
-          </Card>
+          <Link to="/profile">
+            <Card className="cursor-pointer hover:shadow-md transition-shadow">
+              <CardHeader>
+                <Settings className="h-8 w-8 text-primary mb-2" />
+                <CardTitle>Profile</CardTitle>
+                <CardDescription>
+                  Manage your account settings
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </Link>
         </div>
 
         <Card>

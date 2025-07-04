@@ -3,6 +3,7 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import FlipbookViewer from '@/components/flipbooks/FlipbookViewer';
+import Header from '@/components/layout/Header';
 
 const ViewFlipbook = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,15 +15,21 @@ const ViewFlipbook = () => {
 
   if (!id) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white text-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Header />
+        <div className="text-foreground text-center">
           <p className="text-xl">Flipbook not found</p>
         </div>
       </div>
     );
   }
 
-  return <FlipbookViewer flipbookId={id} onClose={handleClose} />;
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <FlipbookViewer flipbookId={id} onClose={handleClose} />
+    </div>
+  );
 };
 
 export default ViewFlipbook;
