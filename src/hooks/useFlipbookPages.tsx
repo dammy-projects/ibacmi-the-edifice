@@ -13,8 +13,6 @@ export interface FlipbookPage {
 }
 
 export const useFlipbookPages = (flipbookId?: string) => {
-  const { user } = useAuth();
-  
   return useQuery({
     queryKey: ['flipbook-pages', flipbookId],
     queryFn: async () => {
@@ -29,6 +27,6 @@ export const useFlipbookPages = (flipbookId?: string) => {
       if (error) throw error;
       return data as FlipbookPage[];
     },
-    enabled: !!flipbookId && !!user,
+    enabled: !!flipbookId,
   });
 };

@@ -4,13 +4,19 @@ import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import FlipbookViewer from '@/components/flipbooks/FlipbookViewer';
 import Header from '@/components/layout/Header';
+import { useAuth } from '@/hooks/useAuth';
 
 const ViewFlipbook = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const handleClose = () => {
-    navigate('/my-flipbooks');
+    if (user) {
+      navigate('/my-flipbooks');
+    } else {
+      navigate('/');
+    }
   };
 
   if (!id) {
