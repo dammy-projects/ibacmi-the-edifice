@@ -1,10 +1,12 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useUserRoles";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
-import { LogOut, User, BookOpen } from "lucide-react";
+import { LogOut, User, BookOpen, Users } from "lucide-react";
 
 const Header = () => {
   const { user, signOut } = useAuth();
+  const isAdmin = useIsAdmin();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -51,6 +53,14 @@ const Header = () => {
               <User className="h-4 w-4" />
               <span>Welcome, {user.email}</span>
             </div>
+            {isAdmin && (
+              <Link to="/user-management">
+                <Button variant="outline" size="sm">
+                  <Users className="h-4 w-4 mr-2" />
+                  Users
+                </Button>
+              </Link>
+            )}
             <Button variant="outline" size="sm" onClick={handleProfileClick}>
               <User className="h-4 w-4 mr-2" />
               Profile

@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import MyFlipbooks from "./pages/MyFlipbooks";
 import ViewFlipbook from "./pages/ViewFlipbook";
 import Profile from "./pages/Profile";
+import UserManagement from "./pages/UserManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ const App = () => (
             <Route path="/my-flipbooks" element={<MyFlipbooks />} />
             <Route path="/view/:id" element={<ViewFlipbook />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/user-management" element={<UserManagement />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
