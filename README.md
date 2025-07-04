@@ -1,4 +1,4 @@
-
+# ibacmi-the-edifice
 
 Follow these steps:
 
@@ -39,6 +39,5 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
-
 
 # by : Allan James C. Daumar
