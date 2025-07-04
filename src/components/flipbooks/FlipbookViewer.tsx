@@ -40,6 +40,11 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [initialTouch, setInitialTouch] = useState<{ x: number; y: number } | null>(null);
 
+  // Page flip animation state
+  const [flipDirection, setFlipDirection] = useState<'left' | 'right' | null>(null);
+  const [flipProgress, setFlipProgress] = useState(0);
+  const [flippingPage, setFlippingPage] = useState<number | null>(null);
+
   console.log('FlipbookViewer - flipbookId:', flipbookId);
   console.log('FlipbookViewer - pages:', pages);
   console.log('FlipbookViewer - isLoading:', isLoading);
@@ -86,36 +91,53 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
     refetch();
   };
 
+  const animatePageFlip = (direction: 'left' | 'right', targetPage: number) => {
+    setFlipDirection(direction);
+    setFlippingPage(targetPage);
+    setFlipProgress(0);
+    setIsFlipping(true);
+    playFlipSound();
+
+    // Animate the flip progress
+    const startTime = Date.now();
+    const duration = 600; // 600ms for the flip animation
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Easing function for smooth animation
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      
+      setFlipProgress(easeProgress);
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        // Animation complete
+        setCurrentPage(targetPage);
+        setIsFlipping(false);
+        setFlipDirection(null);
+        setFlipProgress(0);
+        setFlippingPage(null);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  };
+
   const handlePrevPage = () => {
     if (!pages || currentPage <= 0 || isFlipping) return;
     
-    setIsFlipping(true);
-    playFlipSound();
-    
-    setTimeout(() => {
-      if (isMobile) {
-        setCurrentPage(prev => Math.max(prev - 1, 0));
-      } else {
-        setCurrentPage(prev => Math.max(prev - 2, 0));
-      }
-      setIsFlipping(false);
-    }, 300);
+    const targetPage = isMobile ? Math.max(currentPage - 1, 0) : Math.max(currentPage - 2, 0);
+    animatePageFlip('right', targetPage);
   };
 
   const handleNextPage = () => {
     if (!pages || currentPage >= pages.length - 1 || isFlipping) return;
     
-    setIsFlipping(true);
-    playFlipSound();
-    
-    setTimeout(() => {
-      if (isMobile) {
-        setCurrentPage(prev => Math.min(prev + 1, pages.length - 1));
-      } else {
-        setCurrentPage(prev => Math.min(prev + 2, pages.length - 1));
-      }
-      setIsFlipping(false);
-    }, 300);
+    const targetPage = isMobile ? Math.min(currentPage + 1, pages.length - 1) : Math.min(currentPage + 2, pages.length - 1);
+    animatePageFlip('left', targetPage);
   };
 
   const handleZoomIn = () => {
@@ -289,6 +311,48 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const totalPages = isMobile ? pages.length : Math.ceil(pages.length / 2);
   const currentSpread = isMobile ? currentPage + 1 : Math.floor(currentPage / 2) + 1;
 
+  // Calculate flip animation transforms
+  const getFlipTransform = () => {
+    if (!isFlipping || !flipDirection) return '';
+
+    const rotateY = flipDirection === 'left' ? -180 * flipProgress : 180 * flipProgress;
+    const translateZ = 20 * Math.sin(flipProgress * Math.PI); // 3D effect
+    const scaleX = 1 - 0.1 * Math.sin(flipProgress * Math.PI); // Slight scale effect
+
+    return `perspective(1000px) rotateY(${rotateY}deg) translateZ(${translateZ}px) scaleX(${scaleX})`;
+  };
+
+  const getFlipShadow = () => {
+    if (!isFlipping || !flipDirection) return '';
+
+    const shadowOpacity = flipProgress * 0.3;
+    const shadowBlur = 10 + flipProgress * 20;
+    const shadowOffset = flipDirection === 'left' ? -10 * flipProgress : 10 * flipProgress;
+
+    return `0 ${shadowOffset}px ${shadowBlur}px rgba(0, 0, 0, ${shadowOpacity})`;
+  };
+
+  // Get the page that should be animated based on flip direction and current view
+  const getAnimatedPage = () => {
+    if (!isFlipping || !flipDirection) return null;
+    
+    if (isMobile) {
+      // On mobile, always animate the current page
+      return rightPage;
+    } else {
+      // On desktop, animate the appropriate page based on direction
+      if (flipDirection === 'left') {
+        // Going forward - animate the right page
+        return rightPage;
+      } else {
+        // Going backward - animate the left page
+        return leftPage;
+      }
+    }
+  };
+
+  const animatedPage = getAnimatedPage();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
       {/* Header Controls */}
@@ -408,7 +472,16 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                 {!isMobile && (
                   <div className="relative w-80 h-96 border-r-2 border-amber-300">
                     {leftPage ? (
-                      <div className="w-full h-full p-4 bg-white rounded-l-md">
+                      <div 
+                        className={`w-full h-full p-4 bg-white rounded-l-md relative overflow-hidden ${
+                          animatedPage?.id === leftPage.id ? '' : ''
+                        }`}
+                        style={{
+                          transform: animatedPage?.id === leftPage.id ? getFlipTransform() : '',
+                          boxShadow: animatedPage?.id === leftPage.id ? getFlipShadow() : '',
+                          transformOrigin: flipDirection === 'right' ? 'right center' : 'left center',
+                        }}
+                      >
                         {imageLoadingStates[leftPage.id] && (
                           <div className="absolute inset-4 flex items-center justify-center bg-gray-100 rounded">
                             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
@@ -440,7 +513,14 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                 {/* Right Page / Single Page for Mobile */}
                 <div className={`relative ${isMobile ? 'w-80 h-96 sm:w-96 sm:h-[28rem] md:w-[32rem] md:h-[40rem]' : 'w-80 h-96'}`}>
                   {rightPage ? (
-                    <div className={`w-full h-full p-4 bg-white ${isMobile ? 'rounded-md' : 'rounded-r-md'}`}>
+                    <div 
+                      className={`w-full h-full p-4 bg-white ${isMobile ? 'rounded-md' : 'rounded-r-md'} relative overflow-hidden`}
+                      style={{
+                        transform: animatedPage?.id === rightPage.id ? getFlipTransform() : '',
+                        boxShadow: animatedPage?.id === rightPage.id ? getFlipShadow() : '',
+                        transformOrigin: flipDirection === 'left' ? 'left center' : 'right center',
+                      }}
+                    >
                       {imageLoadingStates[rightPage.id] && (
                         <div className="absolute inset-4 flex items-center justify-center bg-gray-100 rounded">
                           <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
