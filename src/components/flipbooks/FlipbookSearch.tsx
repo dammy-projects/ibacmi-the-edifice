@@ -32,7 +32,7 @@ const FlipbookSearch = ({ value, onChange, onSearch, onClear }: FlipbookSearchPr
   };
 
   return (
-    <div className="flex gap-2 w-full max-w-md">
+    <div className="flex flex-col sm:flex-row gap-2 w-full max-w-md">
       <div className="relative flex-1">
         <Input
           placeholder="Search flipbooks..."
@@ -52,7 +52,7 @@ const FlipbookSearch = ({ value, onChange, onSearch, onClear }: FlipbookSearchPr
           </Button>
         )}
       </div>
-      <Button onClick={handleSearch}>
+      <Button onClick={handleSearch} className="w-full sm:w-auto">
         <Search className="h-4 w-4" />
       </Button>
     </div>

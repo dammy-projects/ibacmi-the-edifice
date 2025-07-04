@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,7 @@ const FlipbookList = ({ onEdit }: FlipbookListProps) => {
 
   if (isLoading) {
     return (
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {[...Array(6)].map((_, i) => (
           <Card key={i} className="animate-pulse">
             <div className="h-48 bg-gray-200 rounded-t-lg"></div>
@@ -32,7 +31,7 @@ const FlipbookList = ({ onEdit }: FlipbookListProps) => {
 
   if (error) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-8 sm:py-12">
         <p className="text-red-600">Error loading flipbooks. Please try again.</p>
       </div>
     );
@@ -40,7 +39,7 @@ const FlipbookList = ({ onEdit }: FlipbookListProps) => {
 
   if (!flipbooks || flipbooks.length === 0) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-8 sm:py-12">
         <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">No flipbooks yet</h3>
         <p className="text-gray-600">Create your first flipbook to get started.</p>
@@ -49,7 +48,7 @@ const FlipbookList = ({ onEdit }: FlipbookListProps) => {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
       {flipbooks.map((flipbook) => (
         <Card key={flipbook.id} className="overflow-hidden hover:shadow-lg transition-shadow">
           {flipbook.cover_image && (
@@ -62,7 +61,7 @@ const FlipbookList = ({ onEdit }: FlipbookListProps) => {
             </div>
           )}
           
-          <CardHeader>
+          <CardHeader className="p-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <CardTitle className="text-lg line-clamp-2">{flipbook.title}</CardTitle>
@@ -74,7 +73,7 @@ const FlipbookList = ({ onEdit }: FlipbookListProps) => {
               </div>
             </div>
             
-            <div className="flex items-center space-x-2 mt-2">
+            <div className="flex flex-wrap items-center gap-2 mt-2">
               <Badge variant={flipbook.is_published ? 'default' : 'secondary'}>
                 {flipbook.is_published ? 'Published' : 'Draft'}
               </Badge>
@@ -84,13 +83,13 @@ const FlipbookList = ({ onEdit }: FlipbookListProps) => {
             </div>
           </CardHeader>
 
-          <CardContent>
-            <div className="flex items-center justify-between">
+          <CardContent className="p-4 pt-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <p className="text-sm text-gray-500">
                 Updated {new Date(flipbook.updated_at).toLocaleDateString()}
               </p>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <Link to={`/view/${flipbook.id}`}>
                   <Button variant="outline" size="sm">
                     <Eye className="h-4 w-4" />

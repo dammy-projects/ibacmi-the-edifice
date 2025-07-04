@@ -120,7 +120,7 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <Button
           variant="ghost"
           onClick={onCancel}
@@ -129,20 +129,20 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Flipbooks
         </Button>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
           {flipbook ? 'Edit Flipbook' : 'Create New Flipbook'}
         </h1>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <Tabs defaultValue="details" className="space-y-6">
+        <Tabs defaultValue="details" className="space-y-4 sm:space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="content">Content</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="details" className="space-y-6">
+          <TabsContent value="details" className="space-y-4 sm:space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Basic Information</CardTitle>
@@ -179,7 +179,7 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
                         <img
                           src={coverImage}
                           alt="Cover preview"
-                          className="w-32 h-40 object-cover rounded border"
+                          className="w-24 h-32 sm:w-32 sm:h-40 object-cover rounded border"
                         />
                         <Button
                           type="button"
@@ -192,8 +192,8 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
                         </Button>
                       </div>
                     ) : (
-                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                        <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 text-center">
+                        <Upload className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400 mx-auto mb-2" />
                         <input
                           type="file"
                           accept="image/*"
@@ -227,7 +227,7 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
                 <CardTitle>Categories</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {categories?.map((category) => (
                     <div
                       key={category.id}
@@ -273,11 +273,11 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="content" className="space-y-6">
+          <TabsContent value="content" className="space-y-4 sm:space-y-6">
             {flipbook && <ImageUpload flipbookId={flipbook.id} />}
             {!flipbook && (
               <Card>
-                <CardContent className="p-6 text-center">
+                <CardContent className="p-4 sm:p-6 text-center">
                   <p className="text-gray-500">
                     Save your flipbook first to upload images.
                   </p>
@@ -286,7 +286,7 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
             )}
           </TabsContent>
 
-          <TabsContent value="settings" className="space-y-6">
+          <TabsContent value="settings" className="space-y-4 sm:space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Visibility & Publishing</CardTitle>
@@ -326,7 +326,7 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
                   </Select>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <Label htmlFor="is_published">Published</Label>
                     <p className="text-sm text-gray-500">
@@ -346,11 +346,11 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
           </TabsContent>
         </Tabs>
 
-        <div className="flex gap-3 mt-6">
+        <div className="flex flex-col sm:flex-row gap-3 mt-6">
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 w-full sm:w-auto"
           >
             <Save className="h-4 w-4" />
             {isSubmitting ? 'Saving...' : (flipbook ? 'Update Flipbook' : 'Create Flipbook')}
@@ -359,6 +359,7 @@ const FlipbookForm = ({ flipbook, onSuccess, onCancel }: FlipbookFormProps) => {
             type="button"
             variant="outline"
             onClick={onCancel}
+            className="w-full sm:w-auto"
           >
             Cancel
           </Button>

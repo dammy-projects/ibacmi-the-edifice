@@ -1,10 +1,12 @@
-
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { Upload, Search, Settings, BookOpen, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Upload, Search, Settings, BookOpen, Loader2, ChevronLeft, ChevronRight, Filter, X } from "lucide-react";
 import Header from "@/components/layout/Header";
 import { usePublicFlipbooks } from "@/hooks/usePublicFlipbooks";
 import FlipbookCard from "@/components/flipbooks/FlipbookCard";
@@ -52,87 +54,62 @@ const Index = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary/10">
-        <div className="container mx-auto px-4 py-16">
-          <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold text-foreground mb-4">
-              Flipbook Platform
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary/10 flex flex-col">
+        <div className="container mx-auto px-4 py-8 sm:py-16 flex-1">
+          <div className="text-center mb-8 sm:mb-12">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4 animate-fade-in">
+            the edifice Flipbook Platform
             </h1>
-            <p className="text-xl text-muted-foreground mb-8">
-              Create, share, and discover amazing digital flipbooks
+            <p className="text-lg sm:text-xl text-muted-foreground mb-6 sm:mb-8 animate-fade-in-delay">
+              IBA College of Mindanao, Inc.
             </p>
-            <div className="space-x-4">
-              <Link to="/auth">
-                <Button size="lg" className="px-8">
-                  Get Started
-                </Button>
-              </Link>
-              <Link to="/auth">
-                <Button variant="outline" size="lg" className="px-8">
-                  Sign In
-                </Button>
-              </Link>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto mb-16">
-            <Card>
-              <CardHeader>
-                <Upload className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Create Flipbooks</CardTitle>
-                <CardDescription>
-                  Upload images to create stunning digital flipbooks
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <Search className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Discover Content</CardTitle>
-                <CardDescription>
-                  Browse and search through thousands of flipbooks
-                </CardDescription>
-              </CardHeader>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <BookOpen className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>Share & Engage</CardTitle>
-                <CardDescription>
-                  Like, comment, and share flipbooks with your community
-                </CardDescription>
-              </CardHeader>
-            </Card>
           </div>
 
           {/* Public Flipbooks Preview */}
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-foreground mb-4">Featured Flipbooks</h2>
-              <p className="text-muted-foreground">Discover amazing flipbooks from our community</p>
+            <div className="text-center mb-6 sm:mb-8">
+              <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3 sm:mb-4">Featured Flipbooks</h2>
+              <p className="text-muted-foreground px-4">Discover amazing flipbooks from our IBACMI community</p>
             </div>
 
             {flipbooksLoading ? (
-              <div className="flex justify-center py-12">
+              <div className="flex justify-center py-8 sm:py-12">
                 <Loader2 className="h-8 w-8 animate-spin" />
               </div>
             ) : flipbooksError ? (
-              <div className="text-center py-12">
+              <div className="text-center py-8 sm:py-12">
                 <p className="text-muted-foreground">Failed to load flipbooks</p>
               </div>
             ) : flipbooksData && flipbooksData.flipbooks.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {flipbooksData.flipbooks.slice(0, 4).map((flipbook) => (
-                  <FlipbookCard key={flipbook.id} flipbook={flipbook} />
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                {flipbooksData.flipbooks.slice(0, 4).map((flipbook, index) => (
+                  <div 
+                    key={flipbook.id} 
+                    className="animate-fade-in-up"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <FlipbookCard flipbook={flipbook} />
+                  </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12">
+              <div className="text-center py-8 sm:py-12">
                 <p className="text-muted-foreground">No flipbooks available yet</p>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Sign In Button at Bottom */}
+        <div className="container mx-auto px-4 py-8 border-t border-primary/10 bg-white/50 backdrop-blur-sm">
+          <div className="text-center">
+            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+              <Link to="/auth">
+                <Button variant="outline" size="lg" className="px-6 sm:px-8 w-full sm:w-auto hover:scale-105 transition-transform duration-200 hover:shadow-lg">
+                  Sign In
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -144,17 +121,17 @@ const Index = () => {
       <Header />
 
       {/* Hero Section */}
-      <div className="bg-gradient-to-r from-primary/10 to-primary/5 py-16">
+      <div className="bg-gradient-to-r from-primary/10 to-primary/5 py-8 sm:py-16">
         <div className="container mx-auto px-4 text-center">
-          <h1 className="text-4xl font-bold text-foreground mb-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 sm:mb-4 animate-fade-in">
             Discover Amazing Flipbooks
           </h1>
-          <p className="text-xl text-muted-foreground mb-8">
+          <p className="text-lg sm:text-xl text-muted-foreground mb-6 sm:mb-8 px-4 animate-fade-in-delay">
             Browse through our collection of digital flipbooks
           </p>
           
           {/* Search Bar */}
-          <div className="flex justify-center mb-8">
+          <div className="flex justify-center mb-6 sm:mb-8 px-4">
             <FlipbookSearch
               value={searchQuery}
               onChange={setSearchQuery}
@@ -164,15 +141,15 @@ const Index = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/my-flipbooks">
-              <Button variant="outline">
+          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 px-4">
+            <Link to="/my-flipbooks" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto hover:scale-105 transition-transform duration-200 hover:shadow-lg">
                 <Upload className="h-4 w-4 mr-2" />
                 Create Flipbook
               </Button>
             </Link>
-            <Link to="/my-flipbooks">
-              <Button variant="outline">
+            <Link to="/my-flipbooks" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto hover:scale-105 transition-transform duration-200 hover:shadow-lg">
                 <Settings className="h-4 w-4 mr-2" />
                 My Flipbooks
               </Button>
@@ -182,40 +159,47 @@ const Index = () => {
       </div>
 
       {/* Flipbooks Grid */}
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-8 sm:py-12">
         {flipbooksLoading ? (
-          <div className="flex justify-center py-12">
+          <div className="flex justify-center py-8 sm:py-12">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : flipbooksError ? (
-          <div className="text-center py-12">
+          <div className="text-center py-8 sm:py-12">
             <p className="text-muted-foreground">Failed to load flipbooks</p>
           </div>
         ) : flipbooksData && flipbooksData.flipbooks.length > 0 ? (
           <>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-foreground">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground">
                 {searchQuery ? `Search Results for "${searchQuery}"` : 'All Flipbooks'}
               </h2>
-              <p className="text-muted-foreground">
-                {flipbooksData.totalCount} flipbook{flipbooksData.totalCount !== 1 ? 's' : ''} found
+              <p className="text-muted-foreground text-sm sm:text-base">
+                {flipbooksData.flipbooks.length} flipbook{flipbooksData.flipbooks.length !== 1 ? 's' : ''} found
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {flipbooksData.flipbooks.map((flipbook) => (
-                <FlipbookCard key={flipbook.id} flipbook={flipbook} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+              {flipbooksData.flipbooks.map((flipbook, index) => (
+                <div 
+                  key={flipbook.id}
+                  className="animate-fade-in-up"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <FlipbookCard flipbook={flipbook} />
+                </div>
               ))}
             </div>
 
             {/* Pagination */}
             {flipbooksData.totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2">
+              <div className="flex flex-wrap justify-center items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
+                  className="hover:scale-105 transition-transform duration-200"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -226,7 +210,7 @@ const Index = () => {
                     variant={currentPage === page ? "default" : "outline"}
                     size="sm"
                     onClick={() => handlePageChange(page)}
-                    className="min-w-[2rem]"
+                    className="min-w-[2rem] hover:scale-105 transition-transform duration-200"
                   >
                     {page}
                   </Button>
@@ -237,6 +221,7 @@ const Index = () => {
                   size="sm"
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === flipbooksData.totalPages}
+                  className="hover:scale-105 transition-transform duration-200"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -244,19 +229,16 @@ const Index = () => {
             )}
           </>
         ) : (
-          <div className="text-center py-12">
-            <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold text-foreground mb-2">
+          <div className="text-center py-8 sm:py-12">
+            <BookOpen className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-2">
               {searchQuery ? 'No flipbooks found' : 'No flipbooks available'}
             </h3>
-            <p className="text-muted-foreground mb-6">
-              {searchQuery 
-                ? 'Try adjusting your search terms or browse all flipbooks'
-                : 'Be the first to create and share a flipbook!'
-              }
+            <p className="text-muted-foreground mb-6 px-4">
+              {searchQuery ? 'Try adjusting your search terms' : 'Be the first to create and share a flipbook!'}
             </p>
             {searchQuery && (
-              <Button onClick={handleClearSearch} variant="outline">
+              <Button onClick={handleClearSearch} variant="outline" className="hover:scale-105 transition-transform duration-200">
                 Clear Search
               </Button>
             )}

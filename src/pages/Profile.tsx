@@ -159,7 +159,7 @@ const Profile = () => {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <div className="flex items-center justify-center pt-20">
+        <div className="flex items-center justify-center pt-16 sm:pt-20">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       </div>
@@ -170,10 +170,10 @@ const Profile = () => {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
+      <main className="container mx-auto px-4 py-6 sm:py-8 max-w-2xl">
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Profile Settings</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Profile Settings</h1>
             <p className="text-muted-foreground">Manage your account information and preferences.</p>
           </div>
 
@@ -205,6 +205,7 @@ const Profile = () => {
                   <Label htmlFor="fullName">Full Name</Label>
                   <Input
                     id="fullName"
+                    type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Enter your full name"
@@ -215,6 +216,7 @@ const Profile = () => {
                   <Label htmlFor="username">Username</Label>
                   <Input
                     id="username"
+                    type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Enter your username"
@@ -223,17 +225,17 @@ const Profile = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="bio">Bio</Label>
-                  <Input
+                  <textarea
                     id="bio"
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
-                    placeholder="Tell us about yourself"
+                    placeholder="Tell us about yourself..."
+                    className="w-full min-h-[100px] px-3 py-2 border border-input bg-background rounded-md text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
 
-                <Button type="submit" disabled={updating}>
-                  {updating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Update Profile
+                <Button type="submit" disabled={updating} className="w-full sm:w-auto">
+                  {updating ? "Updating..." : "Update Profile"}
                 </Button>
               </form>
             </CardContent>
@@ -246,7 +248,7 @@ const Profile = () => {
             <CardHeader>
               <CardTitle>Change Password</CardTitle>
               <CardDescription>
-                Update your password to keep your account secure.
+                Update your account password for enhanced security.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -259,8 +261,11 @@ const Profile = () => {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
-                    required
+                    minLength={6}
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Password must be at least 6 characters long.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -271,13 +276,12 @@ const Profile = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
-                    required
+                    minLength={6}
                   />
                 </div>
 
-                <Button type="submit" disabled={changingPassword}>
-                  {changingPassword && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Change Password
+                <Button type="submit" disabled={changingPassword} className="w-full sm:w-auto">
+                  {changingPassword ? "Changing Password..." : "Change Password"}
                 </Button>
               </form>
             </CardContent>
