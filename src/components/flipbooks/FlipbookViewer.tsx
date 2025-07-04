@@ -32,6 +32,13 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMobile = useIsMobile();
+  
+  // Touch/swipe gesture state
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [initialTouch, setInitialTouch] = useState<{ x: number; y: number } | null>(null);
 
   console.log('FlipbookViewer - flipbookId:', flipbookId);
   console.log('FlipbookViewer - pages:', pages);
@@ -132,6 +139,68 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       setIsFullscreen(false);
     }
   };
+
+  // Touch gesture handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    
+    const touch = e.touches[0];
+    setTouchStart({ x: touch.clientX, y: touch.clientY });
+    setInitialTouch({ x: touch.clientX, y: touch.clientY });
+    setIsDragging(false);
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isMobile || !touchStart || !initialTouch) return;
+    
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - initialTouch.x;
+    const deltaY = touch.clientY - initialTouch.y;
+    
+    // Check if this is a horizontal swipe (more horizontal than vertical movement)
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+      e.preventDefault(); // Prevent default scrolling
+      setIsDragging(true);
+      setDragOffset({ x: deltaX, y: deltaY });
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isMobile || !touchStart) return;
+    
+    const touch = e.changedTouches[0];
+    setTouchEnd({ x: touch.clientX, y: touch.clientY });
+    
+    // Reset drag state
+    setIsDragging(false);
+    setDragOffset({ x: 0, y: 0 });
+    setInitialTouch(null);
+  };
+
+  // Process swipe gesture
+  useEffect(() => {
+    if (!touchStart || !touchEnd) return;
+
+    const distanceX = touchStart.x - touchEnd.x;
+    const distanceY = touchStart.y - touchEnd.y;
+    const isHorizontalSwipe = Math.abs(distanceX) > Math.abs(distanceY);
+    const minSwipeDistance = 50;
+
+    if (isHorizontalSwipe && Math.abs(distanceX) > minSwipeDistance) {
+      if (distanceX > 0) {
+        // Swipe left - next page
+        handleNextPage();
+      } else {
+        // Swipe right - previous page
+        handlePrevPage();
+      }
+    }
+
+    // Reset touch states
+    setTouchStart(null);
+    setTouchEnd(null);
+  }, [touchEnd]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -306,7 +375,13 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       </div>
 
       {/* Main Book Viewer */}
-      <div className="flex-1 relative overflow-hidden flex items-center justify-center min-h-[calc(100vh-140px)] sm:min-h-[calc(100vh-120px)] p-2 sm:p-8">
+      <div 
+        className="flex-1 relative overflow-hidden flex items-center justify-center min-h-[calc(100vh-140px)] sm:min-h-[calc(100vh-120px)] p-2 sm:p-8"
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ touchAction: isMobile ? 'pan-y' : 'auto' }}
+      >
         <div className="relative" style={{ transform: `scale(${zoom})` }}>
           {/* Book Container */}
           <div className="relative">
@@ -322,8 +397,12 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
             <div className={`
               relative bg-amber-100 border-4 border-amber-200 rounded-lg shadow-2xl
               transition-all duration-300 ${isFlipping ? 'animate-pulse' : ''}
-              ${isMobile ? 'w-64 h-80 sm:w-72 sm:h-96' : ''}
-            `}>
+              ${isMobile ? 'w-80 h-96 sm:w-96 sm:h-[28rem] md:w-[32rem] md:h-[40rem]' : ''}
+              ${isDragging ? 'transition-none' : ''}
+            `}
+            style={{
+              transform: isDragging ? `translateX(${dragOffset.x * 0.1}px)` : 'translateX(0)',
+            }}>
               <div className={isMobile ? '' : 'flex'}>
                 {/* Left Page - only show on desktop */}
                 {!isMobile && (
@@ -359,7 +438,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                 )}
 
                 {/* Right Page / Single Page for Mobile */}
-                <div className={`relative ${isMobile ? 'w-64 h-80 sm:w-72 sm:h-96' : 'w-80 h-96'}`}>
+                <div className={`relative ${isMobile ? 'w-80 h-96 sm:w-96 sm:h-[28rem] md:w-[32rem] md:h-[40rem]' : 'w-80 h-96'}`}>
                   {rightPage ? (
                     <div className={`w-full h-full p-4 bg-white ${isMobile ? 'rounded-md' : 'rounded-r-md'}`}>
                       {imageLoadingStates[rightPage.id] && (
@@ -393,24 +472,49 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
           </div>
         </div>
 
-        {/* Navigation Arrows */}
-        <Button
-          onClick={handlePrevPage}
-          disabled={currentPage <= 0 || isFlipping}
-          className={`absolute ${isMobile ? 'left-2' : 'left-8'} top-1/2 -translate-y-1/2 ${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-full bg-amber-200/80 hover:bg-amber-300/80 text-amber-800 shadow-lg border border-amber-300`}
-          size="sm"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+        {/* Navigation Arrows - Hidden on mobile when swiping is enabled */}
+        {!isMobile && (
+          <>
+            <Button
+              onClick={handlePrevPage}
+              disabled={currentPage <= 0 || isFlipping}
+              className="absolute left-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-amber-200/80 hover:bg-amber-300/80 text-amber-800 shadow-lg border border-amber-300"
+              size="sm"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
 
-        <Button
-          onClick={handleNextPage}
-          disabled={currentPage >= pages.length - 1 || isFlipping}
-          className={`absolute ${isMobile ? 'right-2' : 'right-8'} top-1/2 -translate-y-1/2 ${isMobile ? 'w-10 h-10' : 'w-12 h-12'} rounded-full bg-amber-200/80 hover:bg-amber-300/80 text-amber-800 shadow-lg border border-amber-300`}
-          size="sm"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+            <Button
+              onClick={handleNextPage}
+              disabled={currentPage >= pages.length - 1 || isFlipping}
+              className="absolute right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-amber-200/80 hover:bg-amber-300/80 text-amber-800 shadow-lg border border-amber-300"
+              size="sm"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </>
+        )}
+
+        {/* Mobile Navigation Dots */}
+        {isMobile && (
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+            {pages.map((_, index) => (
+              <div
+                key={index}
+                className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                  index === currentPage ? 'bg-amber-600' : 'bg-amber-300'
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Swipe Instructions for Mobile */}
+        {isMobile && (
+          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-xs">
+            Swipe left/right to navigate
+          </div>
+        )}
       </div>
     </div>
   );
