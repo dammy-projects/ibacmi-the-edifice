@@ -8,6 +8,7 @@ import {
   ZoomOut, 
   RotateCcw, 
   Maximize2,
+  Minimize2,
   Home,
   Loader2,
   RefreshCw,
@@ -31,6 +32,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const [isFlipping, setIsFlipping] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const viewerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   
   // Touch/swipe gesture state
@@ -152,13 +154,35 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
     setZoom(1);
   };
 
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      document.exitFullscreen();
-      setIsFullscreen(false);
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        // Enter fullscreen
+        if (viewerRef.current) {
+          await viewerRef.current.requestFullscreen();
+        } else {
+          await document.documentElement.requestFullscreen();
+        }
+        setIsFullscreen(true);
+      } else {
+        // Exit fullscreen
+        await document.exitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.error('Fullscreen error:', error);
+      // Fallback for browsers that don't support fullscreen API
+      if (isMobile) {
+        // For mobile, we can try to use screen orientation API
+        try {
+          if (screen.orientation && 'lock' in screen.orientation) {
+            await (screen.orientation as any).lock('landscape');
+            setIsFullscreen(true);
+          }
+        } catch (orientationError) {
+          console.error('Orientation lock error:', orientationError);
+        }
+      }
     }
   };
 
@@ -229,9 +253,21 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       setIsFullscreen(!!document.fullscreenElement);
     };
 
+    const handleOrientationChange = () => {
+      // Handle orientation changes for mobile
+      if (isMobile && screen.orientation && 'type' in screen.orientation) {
+        setIsFullscreen((screen.orientation as any).type.includes('landscape'));
+      }
+    };
+
     document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+    };
+  }, [isMobile]);
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -240,12 +276,18 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
         handlePrevPage();
       } else if (event.key === 'ArrowRight') {
         handleNextPage();
+      } else if (event.key === 'Escape' && isFullscreen) {
+        toggleFullscreen();
+      } else if (event.key === 'f' || event.key === 'F') {
+        // Toggle fullscreen with 'f' key
+        event.preventDefault();
+        toggleFullscreen();
       }
     };
 
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
-  }, [currentPage, pages, isFlipping, isMobile]);
+  }, [currentPage, pages, isFlipping, isMobile, isFullscreen]);
 
   if (isLoading) {
     return (
@@ -354,9 +396,16 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const animatedPage = getAnimatedPage();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50">
+    <div 
+      ref={viewerRef}
+      className={`min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 transition-all duration-300 ${
+        isFullscreen ? 'fixed inset-0 z-50' : ''
+      }`}
+    >
       {/* Header Controls */}
-      <div className="bg-white/80 backdrop-blur-sm shadow-sm border-b border-amber-200 p-3 sm:p-4">
+      <div className={`bg-white/80 backdrop-blur-sm shadow-sm border-b border-amber-200 p-3 sm:p-4 transition-all duration-300 ${
+        isFullscreen ? 'absolute top-0 left-0 right-0 z-10' : ''
+      }`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center justify-between sm:justify-start sm:space-x-4">
             {onClose && (
@@ -422,8 +471,9 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
               variant="ghost"
               size="sm"
               className="text-amber-800 hover:bg-amber-100"
+              title={isFullscreen ? "Exit fullscreen (F)" : "Enter fullscreen (F)"}
             >
-              <Maximize2 className="h-4 w-4" />
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
 
             <Button
@@ -440,7 +490,11 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
 
       {/* Main Book Viewer */}
       <div 
-        className="flex-1 relative overflow-hidden flex items-center justify-center min-h-[calc(100vh-140px)] sm:min-h-[calc(100vh-120px)] p-2 sm:p-8"
+        className={`flex-1 relative overflow-hidden flex items-center justify-center p-2 sm:p-8 transition-all duration-300 ${
+          isFullscreen 
+            ? 'min-h-screen' 
+            : 'min-h-[calc(100vh-140px)] sm:min-h-[calc(100vh-120px)]'
+        }`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -577,7 +631,9 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
 
         {/* Mobile Navigation Dots */}
         {isMobile && (
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+          <div className={`absolute left-1/2 transform -translate-x-1/2 flex space-x-2 transition-all duration-300 ${
+            isFullscreen ? 'bottom-8' : 'bottom-4'
+          }`}>
             {pages.map((_, index) => (
               <div
                 key={index}
@@ -591,8 +647,18 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
 
         {/* Swipe Instructions for Mobile */}
         {isMobile && (
-          <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-xs">
+          <div className={`absolute left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-xs transition-all duration-300 ${
+            isFullscreen ? 'top-8' : 'top-4'
+          }`}>
             Swipe left/right to navigate
+          </div>
+        )}
+
+        {/* Fullscreen Indicator */}
+        {isFullscreen && (
+          <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2">
+            <Maximize2 className="h-3 w-3" />
+            Fullscreen Mode
           </div>
         )}
       </div>
