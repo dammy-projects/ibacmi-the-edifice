@@ -204,8 +204,8 @@ const UserManagement = () => {
                       <TableCell>{user.id}</TableCell>
                       <TableCell>{user.username || 'N/A'}</TableCell>
                       <TableCell>
-                        <Badge variant={(user.user_roles[0] as any)?.role === 'admin' ? 'default' : 'secondary'}>
-                          {(user.user_roles[0] as any)?.role === 'admin' ? (
+                        <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                          {user.role === 'admin' ? (
                             <>
                               <Shield className="h-3 w-3 mr-1" />
                               Admin
@@ -223,7 +223,7 @@ const UserManagement = () => {
                       </TableCell>
                       <TableCell>
                         <Select
-                          value={(user.user_roles[0] as any)?.role || 'user'}
+                          value={user.role || 'user'}
                           onValueChange={(value: 'admin' | 'user') => 
                             handleRoleChange(user.id, value)
                           }

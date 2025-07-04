@@ -13,25 +13,26 @@ export const useUserRoles = () => {
   const { user } = useAuth();
 
   return useQuery({
-    queryKey: ['user-roles', user?.id],
+    queryKey: ['user-profile', user?.id],
     queryFn: async () => {
-      if (!user) return [];
+      if (!user) return null;
       
       const { data, error } = await supabase
-        .from('user_roles')
-        .select('*')
-        .eq('user_id', user.id);
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
       
       if (error) throw error;
-      return data as UserRole[];
+      return data;
     },
     enabled: !!user,
   });
 };
 
 export const useIsAdmin = () => {
-  const { data: roles } = useUserRoles();
-  return roles?.some(role => role.role === 'admin') || false;
+  const { data: profile } = useUserRoles();
+  return profile?.role === 'admin' || false;
 };
 
 export const useAllUsers = () => {
@@ -40,12 +41,7 @@ export const useAllUsers = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          user_roles (
-            role
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
@@ -115,6 +111,7 @@ export const useUpdateUserRole = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
     },
   });
 };
