@@ -48,11 +48,21 @@ const UserManagement = () => {
     e.preventDefault();
     
     try {
-      await createUser.mutateAsync(formData);
-      toast({
-        title: "Success",
-        description: "User created successfully",
-      });
+      const result = await createUser.mutateAsync(formData);
+      
+      if (result.requiresEmailConfirmation) {
+        toast({
+          title: "Account Created Successfully!",
+          description: "Please confirm your email to login to your account. Check your inbox for the confirmation email.",
+          duration: 8000,
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "User created successfully",
+        });
+      }
+      
       setIsCreateDialogOpen(false);
       setFormData({
         email: '',
@@ -64,7 +74,7 @@ const UserManagement = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create user. Please try again.",
         variant: "destructive",
       });
     }
@@ -110,7 +120,7 @@ const UserManagement = () => {
               <DialogHeader>
                 <DialogTitle>Create New User</DialogTitle>
                 <DialogDescription>
-                  Create a new user account with specified role
+                  Create a new user account with specified role. Users will need to confirm their email before they can login.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateUser} className="space-y-4">
@@ -164,6 +174,11 @@ const UserManagement = () => {
                       <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formData.role === 'admin' && (
+                    <p className="text-sm text-muted-foreground">
+                      Note: Admin role can be assigned after the user confirms their email using the role selector in the users table.
+                    </p>
+                  )}
                 </div>
                 <Button type="submit" className="w-full" disabled={createUser.isPending}>
                   {createUser.isPending ? 'Creating...' : 'Create User'}

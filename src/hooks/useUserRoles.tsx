@@ -52,6 +52,7 @@ export const useAllUsers = () => {
 
 export const useCreateUser = () => {
   const queryClient = useQueryClient();
+  const { signUp } = useAuth();
 
   return useMutation({
     mutationFn: async ({ 
@@ -67,29 +68,23 @@ export const useCreateUser = () => {
       username: string; 
       role?: 'admin' | 'user';
     }) => {
-      const { data, error } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        user_metadata: {
-          full_name,
-          username
-        },
-        email_confirm: true
+      // Use the regular signUp method which works with the public key
+      const { error } = await signUp(email, password, {
+        full_name,
+        username
       });
 
       if (error) throw error;
 
-      // Assign role if not default
+      // If we need to assign admin role, we'll do it after the user is created
+      // The trigger will handle creating the profile and default user role
       if (role === 'admin') {
-        const { error: roleError } = await supabase
-          .from('user_roles')
-          .update({ role: 'admin' })
-          .eq('user_id', data.user.id);
-
-        if (roleError) throw roleError;
+        // We'll need to update the role after the user confirms their email
+        // For now, we'll just create the user and they can be promoted later
+        console.log('Admin role requested - user will need to be promoted after email confirmation');
       }
 
-      return data;
+      return { success: true, requiresEmailConfirmation: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
