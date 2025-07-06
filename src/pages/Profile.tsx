@@ -82,7 +82,6 @@ const Profile = () => {
           full_name: fullName || null,
           username: username || null,
           bio: bio || null,
-          updated_at: new Date().toISOString(),
         });
 
       if (error) throw error;
@@ -108,6 +107,15 @@ const Profile = () => {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!currentPassword) {
+      toast({
+        title: "Error",
+        description: "Current password is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (newPassword !== confirmPassword) {
       toast({
         title: "Error",
@@ -128,6 +136,17 @@ const Profile = () => {
 
     setChangingPassword(true);
     try {
+      // First verify current password by attempting to sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user?.email || '',
+        password: currentPassword
+      });
+
+      if (signInError) {
+        throw new Error('Current password is incorrect');
+      }
+
+      // If current password is correct, update to new password
       const { error } = await supabase.auth.updateUser({
         password: newPassword
       });
@@ -147,7 +166,7 @@ const Profile = () => {
       console.error('Error changing password:', error);
       toast({
         title: "Error",
-        description: "Failed to change password.",
+        description: error instanceof Error ? error.message : "Failed to change password.",
         variant: "destructive",
       });
     } finally {
@@ -254,6 +273,18 @@ const Profile = () => {
             <CardContent>
               <form onSubmit={handleChangePassword} className="space-y-4">
                 <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Current Password</Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="newPassword">New Password</Label>
                   <Input
                     id="newPassword"
@@ -262,6 +293,7 @@ const Profile = () => {
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Enter new password"
                     minLength={6}
+                    required
                   />
                   <p className="text-sm text-muted-foreground">
                     Password must be at least 6 characters long.
@@ -277,6 +309,7 @@ const Profile = () => {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm new password"
                     minLength={6}
+                    required
                   />
                 </div>
 
