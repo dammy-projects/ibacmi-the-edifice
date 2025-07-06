@@ -9,6 +9,14 @@ export interface UserRole {
   created_at: string;
 }
 
+export interface UserProfile {
+  id: string;
+  full_name: string;
+  username: string;
+  role: 'admin' | 'user';
+  created_at: string;
+}
+
 export const useUserRoles = () => {
   const { user } = useAuth();
 
@@ -41,11 +49,11 @@ export const useAllUsers = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, full_name, username, role, created_at')
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data;
+      return data as UserProfile[];
     },
   });
 };
@@ -97,12 +105,15 @@ export const useUpdateUserRole = () => {
 
   return useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: 'admin' | 'user' }) => {
+      // Update the user_roles table - this will trigger the sync to profiles table
       const { error } = await supabase
         .from('user_roles')
         .update({ role })
         .eq('user_id', userId);
 
       if (error) throw error;
+
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
