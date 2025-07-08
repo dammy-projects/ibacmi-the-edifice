@@ -60,31 +60,35 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   console.log('FlipbookViewer - error:', error);
   console.log('FlipbookViewer - isMobile:', isMobile);
 
-  // Calculate A4 dimensions based on viewport
+  // Calculate book dimensions based on viewport
   const calculateBookDimensions = () => {
-    if (!viewerRef.current) return { width: 400, height: 566 }; // Fallback A4 ratio
+    if (!viewerRef.current) return { width: 400, height: 566 }; // Fallback
     
     const viewportWidth = viewerRef.current.clientWidth;
     const viewportHeight = viewerRef.current.clientHeight - 120; // Account for header
     
-    const A4_RATIO = 1.414; // A4 aspect ratio (height/width)
     const MARGIN = 40; // Margin around the book
     
     if (isMobile) {
-      // Mobile: single page view
+      // Mobile: single page view with better proportions
       const maxWidth = viewportWidth - MARGIN;
       const maxHeight = viewportHeight - MARGIN;
       
-      if (maxWidth * A4_RATIO <= maxHeight) {
-        return { width: maxWidth, height: maxWidth * A4_RATIO };
+      // Use a more reasonable mobile ratio (3:4 instead of A4)
+      const mobileRatio = 1.33; // height/width ratio for better mobile viewing
+      
+      if (maxWidth * mobileRatio <= maxHeight) {
+        return { width: maxWidth, height: maxWidth * mobileRatio };
       } else {
-        return { width: maxHeight / A4_RATIO, height: maxHeight };
+        return { width: maxHeight / mobileRatio, height: maxHeight };
       }
     } else {
-      // Desktop: two-page spread
-      const spreadRatio = A4_RATIO / 2; // Two pages side by side
+      // Desktop: two-page spread with A4-like proportions
       const maxWidth = viewportWidth - MARGIN;
       const maxHeight = viewportHeight - MARGIN;
+      
+      // For desktop spread, use a wider ratio (2:3 for the whole spread)
+      const spreadRatio = 0.75; // height/width ratio for two-page spread
       
       if (maxWidth * spreadRatio <= maxHeight) {
         return { width: maxWidth, height: maxWidth * spreadRatio };
@@ -347,8 +351,8 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       if (isPinching) {
         setIsPinching(false);
         setLastPinchDistance(0);
-      } else if (touchStart && !isDragging && zoom <= 1) {
-        // Single tap when not zoomed - navigate
+      } else if (touchStart && zoom <= 1) {
+        // Handle swipe or tap when not zoomed
         const touch = e.changedTouches[0];
         setTouchEnd({ x: touch.clientX, y: touch.clientY });
       }
@@ -358,24 +362,29 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       setDragOffset({ x: 0, y: 0 });
       setPanOffset({ x: 0, y: 0 });
       setInitialTouch(null);
+      setTouchStart(null); // Make sure to reset touchStart
     }
   };
 
   // Process swipe gesture
   useEffect(() => {
-    if (!touchStart || !touchEnd) return;
+    if (!touchStart || !touchEnd || isPinching || zoom > 1) return;
 
     const distanceX = touchStart.x - touchEnd.x;
     const distanceY = touchStart.y - touchEnd.y;
     const isHorizontalSwipe = Math.abs(distanceX) > Math.abs(distanceY);
-    const minSwipeDistance = 50;
+    const minSwipeDistance = 30; // Reduced threshold for better responsiveness
+
+    console.log('Swipe detection:', { distanceX, distanceY, isHorizontalSwipe, minSwipeDistance });
 
     if (isHorizontalSwipe && Math.abs(distanceX) > minSwipeDistance) {
       if (distanceX > 0) {
         // Swipe left - next page
+        console.log('Swiping to next page');
         handleNextPage();
       } else {
         // Swipe right - previous page
+        console.log('Swiping to previous page');
         handlePrevPage();
       }
     }
@@ -383,7 +392,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
     // Reset touch states
     setTouchStart(null);
     setTouchEnd(null);
-  }, [touchEnd]);
+  }, [touchEnd, isPinching, zoom]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -652,34 +661,15 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
               }}
             />
             
-            {/* Book Spine Shadow and Binding - only show on desktop */}
+            {/* Subtle center shadow for realism - no visible gap */}
             {!isMobile && (
-              <>
-                {/* Center spine shadow */}
-                <div 
-                  className="absolute top-6 bottom-6 bg-gradient-to-r from-transparent via-black/40 to-transparent blur-sm transform -translate-x-1/2 z-10"
-                  style={{ 
-                    left: '50%',
-                    width: '8px'
-                  }}
-                />
-                {/* Binding line */}
-                <div 
-                  className="absolute top-4 bottom-4 bg-amber-800 transform -translate-x-1/2 z-20"
-                  style={{ 
-                    left: '50%',
-                    width: '2px'
-                  }}
-                />
-                {/* Binding highlights */}
-                <div 
-                  className="absolute top-6 bottom-6 bg-gradient-to-b from-amber-600 via-amber-700 to-amber-600 transform -translate-x-1/2 z-20"
-                  style={{ 
-                    left: '50%',
-                    width: '1px'
-                  }}
-                />
-              </>
+              <div 
+                className="absolute top-8 bottom-8 bg-gradient-to-r from-transparent via-black/10 to-transparent blur-sm transform -translate-x-1/2 z-10"
+                style={{ 
+                  left: '50%',
+                  width: '4px'
+                }}
+              />
             )}
             
             {/* Main Book */}
@@ -699,7 +689,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                  {/* Left Page - only show on desktop */}
                  {!isMobile && (
                    <div 
-                     className="relative border-r-2 border-amber-300"
+                     className="relative"
                      style={{
                        width: `${bookDimensions.width / 2}px`,
                        height: `${bookDimensions.height}px`
@@ -707,10 +697,11 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                    >
                     {leftPage ? (
                       <div 
-                        className={`w-full h-full p-4 bg-white rounded-l-md relative overflow-hidden ${
+                        className={`w-full h-full p-4 bg-white relative overflow-hidden ${
                           animatedPage?.id === leftPage.id ? '' : ''
                         }`}
                         style={{
+                          borderRadius: '8px 0 0 8px',
                           transform: animatedPage?.id === leftPage.id ? getFlipTransform() : '',
                           boxShadow: animatedPage?.id === leftPage.id ? getFlipShadow() : '',
                           transformOrigin: flipDirection === 'right' ? 'right center' : 'left center',
@@ -734,7 +725,10 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                         </div>
                       </div>
                     ) : (
-                      <div className="w-full h-full p-4 bg-amber-50 rounded-l-md flex items-center justify-center">
+                      <div 
+                        className="w-full h-full p-4 bg-amber-50 flex items-center justify-center"
+                        style={{ borderRadius: '8px 0 0 8px' }}
+                      >
                         <div className="text-amber-400 text-center">
                           <div className="text-6xl font-serif mb-4">📖</div>
                           <div className="text-lg font-serif">Start Reading</div>
@@ -754,8 +748,9 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                  >
                   {rightPage ? (
                     <div 
-                      className={`w-full h-full p-4 bg-white ${isMobile ? 'rounded-md' : 'rounded-r-md'} relative overflow-hidden`}
+                      className={`w-full h-full p-4 bg-white relative overflow-hidden`}
                       style={{
+                        borderRadius: isMobile ? '8px' : '0 8px 8px 0',
                         transform: animatedPage?.id === rightPage.id ? getFlipTransform() : '',
                         boxShadow: animatedPage?.id === rightPage.id ? getFlipShadow() : '',
                         transformOrigin: flipDirection === 'left' ? 'left center' : 'right center',
@@ -779,7 +774,10 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                       </div>
                     </div>
                   ) : (
-                    <div className={`w-full h-full p-4 bg-amber-50 ${isMobile ? 'rounded-md' : 'rounded-r-md'} flex items-center justify-center`}>
+                    <div 
+                      className="w-full h-full p-4 bg-amber-50 flex items-center justify-center"
+                      style={{ borderRadius: isMobile ? '8px' : '0 8px 8px 0' }}
+                    >
                       <div className="text-amber-400 text-center">
                         <div className="text-6xl font-serif mb-4">📚</div>
                         <div className="text-lg font-serif">The End</div>
