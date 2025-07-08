@@ -33,6 +33,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const viewerRef = useRef<HTMLDivElement>(null);
+  const bookRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   
   // Touch/swipe gesture state
@@ -41,6 +42,12 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [initialTouch, setInitialTouch] = useState<{ x: number; y: number } | null>(null);
+
+  // Pinch-to-zoom state for mobile
+  const [isPinching, setIsPinching] = useState(false);
+  const [lastPinchDistance, setLastPinchDistance] = useState(0);
+  const [pinchCenter, setPinchCenter] = useState({ x: 0, y: 0 });
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
 
   // Page flip animation state
   const [flipDirection, setFlipDirection] = useState<'left' | 'right' | null>(null);
@@ -52,6 +59,86 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   console.log('FlipbookViewer - isLoading:', isLoading);
   console.log('FlipbookViewer - error:', error);
   console.log('FlipbookViewer - isMobile:', isMobile);
+
+  // Calculate book dimensions based on viewport
+  const calculateBookDimensions = () => {
+    if (!viewerRef.current) return { width: 400, height: 566 }; // Fallback
+    
+    const viewportWidth = viewerRef.current.clientWidth;
+    const viewportHeight = viewerRef.current.clientHeight - 120; // Account for header
+    
+    const MARGIN = 40; // Margin around the book
+    
+    if (isMobile) {
+      // Mobile: single page view with better proportions
+      const maxWidth = viewportWidth - MARGIN;
+      const maxHeight = viewportHeight - MARGIN;
+      
+      // Use a more reasonable mobile ratio (3:4 instead of A4)
+      const mobileRatio = 1.33; // height/width ratio for better mobile viewing
+      
+      if (maxWidth * mobileRatio <= maxHeight) {
+        return { width: maxWidth, height: maxWidth * mobileRatio };
+      } else {
+        return { width: maxHeight / mobileRatio, height: maxHeight };
+      }
+    } else {
+      // Desktop: two-page spread with A4-like proportions
+      const maxWidth = viewportWidth - MARGIN;
+      const maxHeight = viewportHeight - MARGIN;
+      
+      // For desktop spread, use a wider ratio (2:3 for the whole spread)
+      const spreadRatio = 0.75; // height/width ratio for two-page spread
+      
+      if (maxWidth * spreadRatio <= maxHeight) {
+        return { width: maxWidth, height: maxWidth * spreadRatio };
+      } else {
+        return { width: maxHeight / spreadRatio, height: maxHeight };
+      }
+    }
+  };
+
+  const [bookDimensions, setBookDimensions] = useState(calculateBookDimensions());
+
+  // Update book dimensions on resize and mount
+  useEffect(() => {
+    const handleResize = () => {
+      setBookDimensions(calculateBookDimensions());
+    };
+
+    // Initial calculation when component mounts
+    const timer = setTimeout(() => {
+      setBookDimensions(calculateBookDimensions());
+    }, 100);
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timer);
+    };
+  }, [isMobile]);
+
+  // Recalculate dimensions when viewport or mobile state changes
+  useEffect(() => {
+    if (viewerRef.current) {
+      setBookDimensions(calculateBookDimensions());
+    }
+  }, [isFullscreen, isMobile]);
+
+  // Calculate distance between two touch points
+  const getTouchDistance = (touch1: React.Touch, touch2: React.Touch) => {
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  // Get center point between two touches
+  const getTouchCenter = (touch1: React.Touch, touch2: React.Touch) => {
+    return {
+      x: (touch1.clientX + touch2.clientX) / 2,
+      y: (touch1.clientY + touch2.clientY) / 2,
+    };
+  };
 
   // Initialize audio
   useEffect(() => {
@@ -190,55 +277,114 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isMobile) return;
     
-    const touch = e.touches[0];
-    setTouchStart({ x: touch.clientX, y: touch.clientY });
-    setInitialTouch({ x: touch.clientX, y: touch.clientY });
-    setIsDragging(false);
-    setDragOffset({ x: 0, y: 0 });
+    if (e.touches.length === 1) {
+      // Single touch - swipe/pan
+      const touch = e.touches[0];
+      setTouchStart({ x: touch.clientX, y: touch.clientY });
+      setInitialTouch({ x: touch.clientX, y: touch.clientY });
+      setIsDragging(false);
+      setDragOffset({ x: 0, y: 0 });
+      setIsPinching(false);
+    } else if (e.touches.length === 2) {
+      // Two touches - pinch to zoom
+      e.preventDefault();
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = getTouchDistance(touch1, touch2);
+      const center = getTouchCenter(touch1, touch2);
+      
+      setIsPinching(true);
+      setLastPinchDistance(distance);
+      setPinchCenter(center);
+      setTouchStart(null);
+      setInitialTouch(null);
+    }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isMobile || !touchStart || !initialTouch) return;
+    if (!isMobile) return;
     
-    const touch = e.touches[0];
-    const deltaX = touch.clientX - initialTouch.x;
-    const deltaY = touch.clientY - initialTouch.y;
-    
-    // Check if this is a horizontal swipe (more horizontal than vertical movement)
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-      e.preventDefault(); // Prevent default scrolling
-      setIsDragging(true);
-      setDragOffset({ x: deltaX, y: deltaY });
+    if (e.touches.length === 1 && !isPinching) {
+      // Single touch move - swipe/pan
+      if (!touchStart || !initialTouch) return;
+      
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - initialTouch.x;
+      const deltaY = touch.clientY - initialTouch.y;
+      
+      if (zoom > 1) {
+        // When zoomed in, allow panning
+        e.preventDefault();
+        setPanOffset({ x: deltaX, y: deltaY });
+      } else {
+        // When not zoomed, check for horizontal swipe
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+          e.preventDefault();
+          setIsDragging(true);
+          setDragOffset({ x: deltaX, y: deltaY });
+        }
+      }
+    } else if (e.touches.length === 2 && isPinching) {
+      // Two touches - pinch to zoom
+      e.preventDefault();
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const distance = getTouchDistance(touch1, touch2);
+      const center = getTouchCenter(touch1, touch2);
+      
+      if (lastPinchDistance > 0) {
+        const pinchScale = distance / lastPinchDistance;
+        const newZoom = Math.max(0.5, Math.min(3, zoom * pinchScale));
+        setZoom(newZoom);
+      }
+      
+      setLastPinchDistance(distance);
+      setPinchCenter(center);
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!isMobile || !touchStart) return;
+    if (!isMobile) return;
     
-    const touch = e.changedTouches[0];
-    setTouchEnd({ x: touch.clientX, y: touch.clientY });
-    
-    // Reset drag state
-    setIsDragging(false);
-    setDragOffset({ x: 0, y: 0 });
-    setInitialTouch(null);
+    if (e.touches.length === 0) {
+      // All touches ended
+      if (isPinching) {
+        setIsPinching(false);
+        setLastPinchDistance(0);
+      } else if (touchStart && zoom <= 1) {
+        // Handle swipe or tap when not zoomed
+        const touch = e.changedTouches[0];
+        setTouchEnd({ x: touch.clientX, y: touch.clientY });
+      }
+      
+      // Reset drag and pan state
+      setIsDragging(false);
+      setDragOffset({ x: 0, y: 0 });
+      setPanOffset({ x: 0, y: 0 });
+      setInitialTouch(null);
+      setTouchStart(null); // Make sure to reset touchStart
+    }
   };
 
   // Process swipe gesture
   useEffect(() => {
-    if (!touchStart || !touchEnd) return;
+    if (!touchStart || !touchEnd || isPinching || zoom > 1) return;
 
     const distanceX = touchStart.x - touchEnd.x;
     const distanceY = touchStart.y - touchEnd.y;
     const isHorizontalSwipe = Math.abs(distanceX) > Math.abs(distanceY);
-    const minSwipeDistance = 50;
+    const minSwipeDistance = 30; // Reduced threshold for better responsiveness
+
+    console.log('Swipe detection:', { distanceX, distanceY, isHorizontalSwipe, minSwipeDistance });
 
     if (isHorizontalSwipe && Math.abs(distanceX) > minSwipeDistance) {
       if (distanceX > 0) {
         // Swipe left - next page
+        console.log('Swiping to next page');
         handleNextPage();
       } else {
         // Swipe right - previous page
+        console.log('Swiping to previous page');
         handlePrevPage();
       }
     }
@@ -246,7 +392,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
     // Reset touch states
     setTouchStart(null);
     setTouchEnd(null);
-  }, [touchEnd]);
+  }, [touchEnd, isPinching, zoom]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -429,42 +575,38 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
               {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
             </Button>
 
-            {!isMobile && (
-              <>
-                <Button
-                  onClick={handleZoomOut}
-                  variant="ghost"
-                  size="sm"
-                  className="text-amber-800 hover:bg-amber-100"
-                  disabled={zoom <= 0.5}
-                >
-                  <ZoomOut className="h-4 w-4" />
-                </Button>
-                
-                <Button
-                  onClick={handleResetZoom}
-                  variant="ghost"
-                  size="sm"
-                  className="text-amber-800 hover:bg-amber-100"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                </Button>
-                
-                <Button
-                  onClick={handleZoomIn}
-                  variant="ghost"
-                  size="sm"
-                  className="text-amber-800 hover:bg-amber-100"
-                  disabled={zoom >= 3}
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </Button>
+            <Button
+              onClick={handleZoomOut}
+              variant="ghost"
+              size="sm"
+              className="text-amber-800 hover:bg-amber-100"
+              disabled={zoom <= 0.5}
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              onClick={handleResetZoom}
+              variant="ghost"
+              size="sm"
+              className="text-amber-800 hover:bg-amber-100"
+            >
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+            
+            <Button
+              onClick={handleZoomIn}
+              variant="ghost"
+              size="sm"
+              className="text-amber-800 hover:bg-amber-100"
+              disabled={zoom >= 3}
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
 
-                <span className="text-sm text-amber-700 px-2">
-                  {Math.round(zoom * 100)}%
-                </span>
-              </>
-            )}
+            <span className="text-sm text-amber-700 px-2">
+              {Math.round(zoom * 100)}%
+            </span>
 
             <Button
               onClick={toggleFullscreen}
@@ -490,7 +632,8 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
 
       {/* Main Book Viewer */}
       <div 
-        className={`flex-1 relative overflow-hidden flex items-center justify-center p-2 sm:p-8 transition-all duration-300 ${
+        ref={bookRef}
+        className={`flex-1 relative ${zoom > 1 ? 'overflow-auto' : 'overflow-hidden'} flex items-center justify-center p-2 sm:p-8 transition-all duration-300 ${
           isFullscreen 
             ? 'min-h-screen' 
             : 'min-h-[calc(100vh-140px)] sm:min-h-[calc(100vh-120px)]'
@@ -498,39 +641,67 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ touchAction: isMobile ? 'pan-y' : 'auto' }}
+        style={{ touchAction: isMobile ? (zoom > 1 ? 'none' : 'pan-y pinch-zoom') : 'auto' }}
       >
-        <div className="relative" style={{ transform: `scale(${zoom})` }}>
+        <div 
+          className="relative transition-transform duration-200" 
+          style={{ 
+            transform: `scale(${zoom}) translate(${panOffset.x * 0.1}px, ${panOffset.y * 0.1}px)`,
+            transformOrigin: isMobile && isPinching ? `${pinchCenter.x}px ${pinchCenter.y}px` : 'center'
+          }}
+        >
           {/* Book Container */}
           <div className="relative">
             {/* Book Shadow */}
-            <div className="absolute -bottom-4 left-4 right-4 h-8 bg-black/20 blur-xl rounded-full" />
+            <div 
+              className="absolute -bottom-6 left-8 right-8 h-12 bg-black/30 blur-2xl rounded-full transform"
+              style={{ 
+                width: `${bookDimensions.width - 64}px`,
+                left: '32px'
+              }}
+            />
             
-            {/* Book Spine Shadow - only show on desktop */}
+            {/* Subtle center shadow for realism - no visible gap */}
             {!isMobile && (
-              <div className="absolute top-4 bottom-4 left-1/2 w-2 bg-black/30 blur-sm transform -translate-x-1/2" />
+              <div 
+                className="absolute top-8 bottom-8 bg-gradient-to-r from-transparent via-black/10 to-transparent blur-sm transform -translate-x-1/2 z-10"
+                style={{ 
+                  left: '50%',
+                  width: '4px'
+                }}
+              />
             )}
             
             {/* Main Book */}
-            <div className={`
-              relative bg-amber-100 border-4 border-amber-200 rounded-lg shadow-2xl
-              transition-all duration-300 ${isFlipping ? 'animate-pulse' : ''}
-              ${isMobile ? 'w-80 h-96 sm:w-96 sm:h-[28rem] md:w-[32rem] md:h-[40rem]' : ''}
-              ${isDragging ? 'transition-none' : ''}
-            `}
-            style={{
-              transform: isDragging ? `translateX(${dragOffset.x * 0.1}px)` : 'translateX(0)',
-            }}>
-              <div className={isMobile ? '' : 'flex'}>
-                {/* Left Page - only show on desktop */}
-                {!isMobile && (
-                  <div className="relative w-80 h-96 border-r-2 border-amber-300">
+            <div 
+              className={`
+                relative bg-amber-100 border-4 border-amber-200 rounded-lg shadow-2xl
+                transition-all duration-300 ${isFlipping ? 'animate-pulse' : ''}
+                ${isDragging && zoom <= 1 ? 'transition-none' : ''}
+              `}
+              style={{
+                width: `${bookDimensions.width}px`,
+                height: `${bookDimensions.height}px`,
+                transform: isDragging && zoom <= 1 ? `translateX(${dragOffset.x * 0.1}px)` : 'translateX(0)',
+              }}
+            >
+                             <div className={isMobile ? '' : 'flex h-full'}>
+                 {/* Left Page - only show on desktop */}
+                 {!isMobile && (
+                   <div 
+                     className="relative"
+                     style={{
+                       width: `${bookDimensions.width / 2}px`,
+                       height: `${bookDimensions.height}px`
+                     }}
+                   >
                     {leftPage ? (
                       <div 
-                        className={`w-full h-full p-4 bg-white rounded-l-md relative overflow-hidden ${
+                        className={`w-full h-full p-4 bg-white relative overflow-hidden ${
                           animatedPage?.id === leftPage.id ? '' : ''
                         }`}
                         style={{
+                          borderRadius: '8px 0 0 8px',
                           transform: animatedPage?.id === leftPage.id ? getFlipTransform() : '',
                           boxShadow: animatedPage?.id === leftPage.id ? getFlipShadow() : '',
                           transformOrigin: flipDirection === 'right' ? 'right center' : 'left center',
@@ -554,7 +725,10 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                         </div>
                       </div>
                     ) : (
-                      <div className="w-full h-full p-4 bg-amber-50 rounded-l-md flex items-center justify-center">
+                      <div 
+                        className="w-full h-full p-4 bg-amber-50 flex items-center justify-center"
+                        style={{ borderRadius: '8px 0 0 8px' }}
+                      >
                         <div className="text-amber-400 text-center">
                           <div className="text-6xl font-serif mb-4">📖</div>
                           <div className="text-lg font-serif">Start Reading</div>
@@ -564,12 +738,19 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                   </div>
                 )}
 
-                {/* Right Page / Single Page for Mobile */}
-                <div className={`relative ${isMobile ? 'w-80 h-96 sm:w-96 sm:h-[28rem] md:w-[32rem] md:h-[40rem]' : 'w-80 h-96'}`}>
+                                 {/* Right Page / Single Page for Mobile */}
+                 <div 
+                   className="relative"
+                   style={{
+                     width: isMobile ? `${bookDimensions.width}px` : `${bookDimensions.width / 2}px`,
+                     height: `${bookDimensions.height}px`
+                   }}
+                 >
                   {rightPage ? (
                     <div 
-                      className={`w-full h-full p-4 bg-white ${isMobile ? 'rounded-md' : 'rounded-r-md'} relative overflow-hidden`}
+                      className={`w-full h-full p-4 bg-white relative overflow-hidden`}
                       style={{
+                        borderRadius: isMobile ? '8px' : '0 8px 8px 0',
                         transform: animatedPage?.id === rightPage.id ? getFlipTransform() : '',
                         boxShadow: animatedPage?.id === rightPage.id ? getFlipShadow() : '',
                         transformOrigin: flipDirection === 'left' ? 'left center' : 'right center',
@@ -593,7 +774,10 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                       </div>
                     </div>
                   ) : (
-                    <div className={`w-full h-full p-4 bg-amber-50 ${isMobile ? 'rounded-md' : 'rounded-r-md'} flex items-center justify-center`}>
+                    <div 
+                      className="w-full h-full p-4 bg-amber-50 flex items-center justify-center"
+                      style={{ borderRadius: isMobile ? '8px' : '0 8px 8px 0' }}
+                    >
                       <div className="text-amber-400 text-center">
                         <div className="text-6xl font-serif mb-4">📚</div>
                         <div className="text-lg font-serif">The End</div>
@@ -650,7 +834,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
           <div className={`absolute left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-xs transition-all duration-300 ${
             isFullscreen ? 'top-8' : 'top-4'
           }`}>
-            Swipe left/right to navigate
+            {zoom > 1 ? 'Drag to pan • Pinch to zoom' : 'Swipe to navigate • Pinch to zoom'}
           </div>
         )}
 
