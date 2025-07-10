@@ -65,17 +65,17 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
     if (!viewerRef.current) return { width: 400, height: 566 }; // Fallback
     
     const viewportWidth = viewerRef.current.clientWidth;
-    const viewportHeight = viewerRef.current.clientHeight - 120; // Account for header
+    const viewportHeight = viewerRef.current.clientHeight - (isFullscreen ? 80 : 120); // Account for header
     
-    const MARGIN = 40; // Margin around the book
+    const MARGIN = isMobile ? 20 : 40; // Smaller margin on mobile
     
     if (isMobile) {
       // Mobile: single page view with better proportions
-      const maxWidth = viewportWidth - MARGIN;
+      const maxWidth = Math.min(viewportWidth - MARGIN, 500); // Cap max width on mobile
       const maxHeight = viewportHeight - MARGIN;
       
-      // Use a more reasonable mobile ratio (3:4 instead of A4)
-      const mobileRatio = 1.33; // height/width ratio for better mobile viewing
+      // Use a reasonable mobile ratio (4:3) for better viewing
+      const mobileRatio = 1.4; // height/width ratio for mobile viewing
       
       if (maxWidth * mobileRatio <= maxHeight) {
         return { width: maxWidth, height: maxWidth * mobileRatio };
@@ -83,12 +83,12 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
         return { width: maxHeight / mobileRatio, height: maxHeight };
       }
     } else {
-      // Desktop: two-page spread with A4-like proportions
-      const maxWidth = viewportWidth - MARGIN;
+      // Desktop: two-page spread with better proportions
+      const maxWidth = Math.min(viewportWidth - MARGIN, 1200); // Cap max width on desktop
       const maxHeight = viewportHeight - MARGIN;
       
-      // For desktop spread, use a wider ratio (2:3 for the whole spread)
-      const spreadRatio = 0.75; // height/width ratio for two-page spread
+      // For desktop spread, use a more appropriate ratio
+      const spreadRatio = 0.7; // height/width ratio for two-page spread
       
       if (maxWidth * spreadRatio <= maxHeight) {
         return { width: maxWidth, height: maxWidth * spreadRatio };
@@ -116,7 +116,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       window.removeEventListener('resize', handleResize);
       clearTimeout(timer);
     };
-  }, [isMobile]);
+  }, [isMobile, isFullscreen]);
 
   // Recalculate dimensions when viewport or mobile state changes
   useEffect(() => {
@@ -216,17 +216,21 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   };
 
   const handlePrevPage = () => {
-    if (!pages || currentPage <= 0 || isFlipping) return;
+    if (!pages || isFlipping) return;
     
     const targetPage = isMobile ? Math.max(currentPage - 1, 0) : Math.max(currentPage - 2, 0);
-    animatePageFlip('right', targetPage);
+    if (targetPage !== currentPage) {
+      animatePageFlip('right', targetPage);
+    }
   };
 
   const handleNextPage = () => {
-    if (!pages || currentPage >= pages.length - 1 || isFlipping) return;
+    if (!pages || isFlipping) return;
     
     const targetPage = isMobile ? Math.min(currentPage + 1, pages.length - 1) : Math.min(currentPage + 2, pages.length - 1);
-    animatePageFlip('left', targetPage);
+    if (targetPage !== currentPage) {
+      animatePageFlip('left', targetPage);
+    }
   };
 
   const handleZoomIn = () => {
@@ -285,6 +289,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       setIsDragging(false);
       setDragOffset({ x: 0, y: 0 });
       setIsPinching(false);
+      setTouchEnd(null); // Reset touchEnd when starting new touch
     } else if (e.touches.length === 2) {
       // Two touches - pinch to zoom
       e.preventDefault();
@@ -298,6 +303,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       setPinchCenter(center);
       setTouchStart(null);
       setInitialTouch(null);
+      setTouchEnd(null);
     }
   };
 
@@ -318,7 +324,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
         setPanOffset({ x: deltaX, y: deltaY });
       } else {
         // When not zoomed, check for horizontal swipe
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 5) {
           e.preventDefault();
           setIsDragging(true);
           setDragOffset({ x: deltaX, y: deltaY });
@@ -351,10 +357,31 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       if (isPinching) {
         setIsPinching(false);
         setLastPinchDistance(0);
-      } else if (touchStart && zoom <= 1) {
-        // Handle swipe or tap when not zoomed
+      } else if (touchStart && zoom <= 1 && !isDragging) {
+        // Handle tap when not zoomed and not dragging
         const touch = e.changedTouches[0];
         setTouchEnd({ x: touch.clientX, y: touch.clientY });
+      } else if (touchStart && zoom <= 1 && isDragging) {
+        // Handle swipe when dragging occurred
+        const touch = e.changedTouches[0];
+        const distanceX = touchStart.x - touch.clientX;
+        const distanceY = touchStart.y - touch.clientY;
+        const isHorizontalSwipe = Math.abs(distanceX) > Math.abs(distanceY);
+        const minSwipeDistance = 20; // Reduced threshold for better responsiveness
+
+        console.log('Swipe detection:', { distanceX, distanceY, isHorizontalSwipe, minSwipeDistance });
+
+        if (isHorizontalSwipe && Math.abs(distanceX) > minSwipeDistance) {
+          if (distanceX > 0) {
+            // Swipe left - next page
+            console.log('Swiping to next page');
+            handleNextPage();
+          } else {
+            // Swipe right - previous page
+            console.log('Swiping to previous page');
+            handlePrevPage();
+          }
+        }
       }
       
       // Reset drag and pan state
@@ -362,29 +389,34 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       setDragOffset({ x: 0, y: 0 });
       setPanOffset({ x: 0, y: 0 });
       setInitialTouch(null);
-      setTouchStart(null); // Make sure to reset touchStart
+      
+      // Reset touch states after a short delay to ensure swipe detection works
+      setTimeout(() => {
+        setTouchStart(null);
+        setTouchEnd(null);
+      }, 10);
     }
   };
 
-  // Process swipe gesture
+  // Process swipe gesture - keep this as backup for tap-based swipes
   useEffect(() => {
-    if (!touchStart || !touchEnd || isPinching || zoom > 1) return;
+    if (!touchStart || !touchEnd || isPinching || zoom > 1 || isDragging) return;
 
     const distanceX = touchStart.x - touchEnd.x;
     const distanceY = touchStart.y - touchEnd.y;
     const isHorizontalSwipe = Math.abs(distanceX) > Math.abs(distanceY);
-    const minSwipeDistance = 30; // Reduced threshold for better responsiveness
+    const minSwipeDistance = 20; // Reduced threshold for better responsiveness
 
-    console.log('Swipe detection:', { distanceX, distanceY, isHorizontalSwipe, minSwipeDistance });
+    console.log('Backup swipe detection:', { distanceX, distanceY, isHorizontalSwipe, minSwipeDistance });
 
     if (isHorizontalSwipe && Math.abs(distanceX) > minSwipeDistance) {
       if (distanceX > 0) {
         // Swipe left - next page
-        console.log('Swiping to next page');
+        console.log('Backup: Swiping to next page');
         handleNextPage();
       } else {
         // Swipe right - previous page
-        console.log('Swiping to previous page');
+        console.log('Backup: Swiping to previous page');
         handlePrevPage();
       }
     }
@@ -392,7 +424,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
     // Reset touch states
     setTouchStart(null);
     setTouchEnd(null);
-  }, [touchEnd, isPinching, zoom]);
+  }, [touchEnd, isPinching, zoom, isDragging]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -641,7 +673,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ touchAction: isMobile ? (zoom > 1 ? 'none' : 'pan-y pinch-zoom') : 'auto' }}
+        style={{ touchAction: isMobile ? (zoom > 1 ? 'none' : 'pan-y') : 'auto' }}
       >
         <div 
           className="relative transition-transform duration-200" 
@@ -796,7 +828,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
             <Button
               onClick={handlePrevPage}
               disabled={currentPage <= 0 || isFlipping}
-              className="absolute left-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-amber-200/80 hover:bg-amber-300/80 text-amber-800 shadow-lg border border-amber-300"
+              className="absolute left-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-amber-200/80 hover:bg-amber-300/80 text-amber-800 shadow-lg border border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
               size="sm"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -805,7 +837,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
             <Button
               onClick={handleNextPage}
               disabled={currentPage >= pages.length - 1 || isFlipping}
-              className="absolute right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-amber-200/80 hover:bg-amber-300/80 text-amber-800 shadow-lg border border-amber-300"
+              className="absolute right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-amber-200/80 hover:bg-amber-300/80 text-amber-800 shadow-lg border border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
               size="sm"
             >
               <ChevronRight className="h-4 w-4" />
@@ -834,7 +866,18 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
           <div className={`absolute left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-xs transition-all duration-300 ${
             isFullscreen ? 'top-8' : 'top-4'
           }`}>
-            {zoom > 1 ? 'Drag to pan • Pinch to zoom' : 'Swipe to navigate • Pinch to zoom'}
+            {zoom > 1 ? 'Drag to pan • Pinch to zoom' : 'Swipe left/right to navigate • Pinch to zoom'}
+          </div>
+        )}
+
+        {/* Mobile Visual Swipe Indicator */}
+        {isMobile && isDragging && zoom <= 1 && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className={`bg-black/30 text-white px-4 py-2 rounded-full text-sm transition-opacity duration-200 ${
+              Math.abs(dragOffset.x) > 20 ? 'opacity-100' : 'opacity-50'
+            }`}>
+              {dragOffset.x > 20 ? '← Previous Page' : dragOffset.x < -20 ? 'Next Page →' : 'Swipe to navigate'}
+            </div>
           </div>
         )}
 
