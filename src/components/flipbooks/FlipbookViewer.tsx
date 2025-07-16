@@ -574,279 +574,186 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const animatedPage = getAnimatedPage();
 
   return (
-    <div 
+    <div
       ref={viewerRef}
-      className={`min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 transition-all duration-300 ${
-        isFullscreen ? 'fixed inset-0 z-50' : ''
-      }`}
+      className={`relative flex flex-col items-center justify-center w-full h-full min-h-[70vh] transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-50 bg-white' : ''}`}
+      style={{ background: 'transparent' }}
     >
-      {/* Header Controls */}
-      <div className={`bg-white/80 backdrop-blur-sm shadow-sm border-b border-amber-200 p-3 sm:p-4 transition-all duration-300 ${
-        isFullscreen ? 'absolute top-0 left-0 right-0 z-10' : ''
-      }`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center justify-between sm:justify-start sm:space-x-4">
-            {onClose && (
-              <Button onClick={onClose} variant="ghost" className="text-amber-800 hover:bg-amber-100">
-                <Home className="h-4 w-4 mr-2" />
-                {isMobile ? 'Back' : 'Back to Flipbooks'}
-              </Button>
-            )}
-            <span className="text-sm text-amber-700">
-              {isMobile ? `Page ${currentSpread} of ${totalPages}` : `Spread ${currentSpread} of ${totalPages}`}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-center sm:justify-end flex-wrap gap-1 sm:gap-2">
-            <Button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              variant="ghost"
-              size="sm"
-              className="text-amber-800 hover:bg-amber-100"
-            >
-              {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-            </Button>
-
-            <Button
-              onClick={handleZoomOut}
-              variant="ghost"
-              size="sm"
-              className="text-amber-800 hover:bg-amber-100"
-              disabled={zoom <= 0.5}
-            >
-              <ZoomOut className="h-4 w-4" />
-            </Button>
-            
-            <Button
-              onClick={handleResetZoom}
-              variant="ghost"
-              size="sm"
-              className="text-amber-800 hover:bg-amber-100"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-            
-            <Button
-              onClick={handleZoomIn}
-              variant="ghost"
-              size="sm"
-              className="text-amber-800 hover:bg-amber-100"
-              disabled={zoom >= 3}
-            >
-              <ZoomIn className="h-4 w-4" />
-            </Button>
-
-            <span className="text-sm text-amber-700 px-2">
-              {Math.round(zoom * 100)}%
-            </span>
-
-            <Button
-              onClick={toggleFullscreen}
-              variant="ghost"
-              size="sm"
-              className="text-amber-800 hover:bg-amber-100"
-              title={isFullscreen ? "Exit fullscreen (F)" : "Enter fullscreen (F)"}
-            >
-              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </Button>
-
-            <Button
-              onClick={handleRefresh}
-              variant="ghost"
-              size="sm"
-              className="text-amber-800 hover:bg-amber-100"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Book Viewer */}
-      <div 
-        ref={bookRef}
-        className={`flex-1 relative ${zoom > 1 ? 'overflow-auto' : 'overflow-hidden'} flex items-center justify-center p-2 sm:p-8 transition-all duration-300 ${
-          isFullscreen 
-            ? 'min-h-screen' 
-            : 'min-h-[calc(100vh-140px)] sm:min-h-[calc(100vh-120px)]'
-        }`}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={{ touchAction: isMobile ? (zoom > 1 ? 'none' : 'pan-y') : 'auto' }}
-      >
-        <div 
-          className="relative transition-transform duration-200" 
-          style={{ 
-            transform: `scale(${zoom}) translate(${panOffset.x * 0.1}px, ${panOffset.y * 0.1}px)`,
-            transformOrigin: isMobile && isPinching ? `${pinchCenter.x}px ${pinchCenter.y}px` : 'center'
+      {/* Book and Navigation */}
+      <div className="relative flex items-center justify-center w-full" style={{ minHeight: bookDimensions.height + 64 }}>
+        {/* Left Arrow */}
+        {!isMobile && (
+          <Button
+            onClick={handlePrevPage}
+            disabled={currentPage <= 0 || isFlipping}
+            className="absolute left-0 z-20 -translate-x-1/2 w-14 h-14 rounded-full bg-white/90 hover:bg-gray-100 text-gray-700 shadow-xl border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            size="lg"
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-7 w-7" />
+          </Button>
+        )}
+        {/* Book Container */}
+        <div
+          ref={bookRef}
+          className="relative flex items-stretch justify-center bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+          style={{
+            width: bookDimensions.width,
+            height: bookDimensions.height,
+            boxShadow: '0 8px 40px 0 rgba(0,0,0,0.10), 0 1.5px 0 0 #e0e0e0',
           }}
         >
-          {/* Book Container */}
-          <div className="relative">
-            {/* Book Shadow */}
-            <div 
-              className="absolute -bottom-6 left-8 right-8 h-12 bg-black/30 blur-2xl rounded-full transform"
-              style={{ 
-                width: `${bookDimensions.width - 64}px`,
-                left: '32px'
+          {/* Spine/crease */}
+          {!isMobile && (
+            <div
+              className="absolute top-0 bottom-0 left-1/2 w-2 -translate-x-1/2 z-10 pointer-events-none"
+              style={{
+                background: 'linear-gradient(90deg, rgba(180,180,180,0.10) 0%, rgba(180,180,180,0.30) 50%, rgba(180,180,180,0.10) 100%)',
+                borderRadius: '1px',
+                boxShadow: '0 0 16px 0 rgba(0,0,0,0.08)'
               }}
             />
-            
-            {/* Subtle center shadow for realism - no visible gap */}
+          )}
+          {/* Pages */}
+          <div className={isMobile ? '' : 'flex h-full w-full'}>
+            {/* Left Page (desktop) */}
             {!isMobile && (
-              <div 
-                className="absolute top-8 bottom-8 bg-gradient-to-r from-transparent via-black/10 to-transparent blur-sm transform -translate-x-1/2 z-10"
-                style={{ 
-                  left: '50%',
-                  width: '4px'
-                }}
-              />
-            )}
-            
-            {/* Main Book */}
-            <div 
-              className={`
-                relative bg-amber-100 border-4 border-amber-200 rounded-lg shadow-2xl
-                transition-all duration-300 ${isFlipping ? 'animate-pulse' : ''}
-                ${isDragging && zoom <= 1 ? 'transition-none' : ''}
-              `}
-              style={{
-                width: `${bookDimensions.width}px`,
-                height: `${bookDimensions.height}px`,
-                transform: isDragging && zoom <= 1 ? `translateX(${dragOffset.x * 0.1}px)` : 'translateX(0)',
-              }}
-            >
-                             <div className={isMobile ? '' : 'flex h-full'}>
-                 {/* Left Page - only show on desktop */}
-                 {!isMobile && (
-                   <div 
-                     className="relative"
-                     style={{
-                       width: `${bookDimensions.width / 2}px`,
-                       height: `${bookDimensions.height}px`
-                     }}
-                   >
-                    {leftPage ? (
-                      <div 
-                        className={`w-full h-full p-4 bg-white relative overflow-hidden ${
-                          animatedPage?.id === leftPage.id ? '' : ''
-                        }`}
-                        style={{
-                          borderRadius: '8px 0 0 8px',
-                          transform: animatedPage?.id === leftPage.id ? getFlipTransform() : '',
-                          boxShadow: animatedPage?.id === leftPage.id ? getFlipShadow() : '',
-                          transformOrigin: flipDirection === 'right' ? 'right center' : 'left center',
-                        }}
-                      >
-                        {imageLoadingStates[leftPage.id] && (
-                          <div className="absolute inset-4 flex items-center justify-center bg-gray-100 rounded">
-                            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                          </div>
-                        )}
-                        <img
-                          src={leftPage.image_url}
-                          alt={`Page ${leftPage.page_number}`}
-                          className="w-full h-full object-contain rounded"
-                          onLoadStart={() => handleImageLoadStart(leftPage.id)}
-                          onLoad={() => handleImageLoad(leftPage.id)}
-                          onError={() => handleImageError(leftPage.id, leftPage.image_url)}
-                        />
-                        <div className="absolute bottom-2 left-4 text-xs text-gray-500">
-                          {leftPage.page_number}
-                        </div>
-                      </div>
-                    ) : (
-                      <div 
-                        className="w-full h-full p-4 bg-amber-50 flex items-center justify-center"
-                        style={{ borderRadius: '8px 0 0 8px' }}
-                      >
-                        <div className="text-amber-400 text-center">
-                          <div className="text-6xl font-serif mb-4">📖</div>
-                          <div className="text-lg font-serif">Start Reading</div>
-                        </div>
+              <div className="relative" style={{ width: bookDimensions.width / 2, height: bookDimensions.height }}>
+                {leftPage ? (
+                  <div 
+                    className={`w-full h-full p-4 bg-white relative overflow-hidden ${
+                      animatedPage?.id === leftPage.id ? '' : ''
+                    }`}
+                    style={{
+                      borderRadius: '8px 0 0 8px',
+                      transform: animatedPage?.id === leftPage.id ? getFlipTransform() : '',
+                      boxShadow: animatedPage?.id === leftPage.id ? getFlipShadow() : '',
+                      transformOrigin: flipDirection === 'right' ? 'right center' : 'left center',
+                    }}
+                  >
+                    {imageLoadingStates[leftPage.id] && (
+                      <div className="absolute inset-4 flex items-center justify-center bg-gray-100 rounded">
+                        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                       </div>
                     )}
+                    <img
+                      src={leftPage.image_url}
+                      alt={`Page ${leftPage.page_number}`}
+                      className="w-full h-full object-contain rounded"
+                      onLoadStart={() => handleImageLoadStart(leftPage.id)}
+                      onLoad={() => handleImageLoad(leftPage.id)}
+                      onError={() => handleImageError(leftPage.id, leftPage.image_url)}
+                    />
+                    <div className="absolute bottom-2 left-4 text-xs text-gray-500">
+                      {leftPage.page_number}
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    className="w-full h-full p-4 bg-amber-50 flex items-center justify-center"
+                    style={{ borderRadius: '8px 0 0 8px' }}
+                  >
+                    <div className="text-amber-400 text-center">
+                      <div className="text-6xl font-serif mb-4">📖</div>
+                      <div className="text-lg font-serif">Start Reading</div>
+                    </div>
                   </div>
                 )}
+              </div>
+            )}
 
-                                 {/* Right Page / Single Page for Mobile */}
-                 <div 
-                   className="relative"
-                   style={{
-                     width: isMobile ? `${bookDimensions.width}px` : `${bookDimensions.width / 2}px`,
-                     height: `${bookDimensions.height}px`
-                   }}
-                 >
-                  {rightPage ? (
-                    <div 
-                      className={`w-full h-full p-4 bg-white relative overflow-hidden`}
-                      style={{
-                        borderRadius: isMobile ? '8px' : '0 8px 8px 0',
-                        transform: animatedPage?.id === rightPage.id ? getFlipTransform() : '',
-                        boxShadow: animatedPage?.id === rightPage.id ? getFlipShadow() : '',
-                        transformOrigin: flipDirection === 'left' ? 'left center' : 'right center',
-                      }}
-                    >
-                      {imageLoadingStates[rightPage.id] && (
-                        <div className="absolute inset-4 flex items-center justify-center bg-gray-100 rounded">
-                          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-                        </div>
-                      )}
-                      <img
-                        src={rightPage.image_url}
-                        alt={`Page ${rightPage.page_number}`}
-                        className="w-full h-full object-contain rounded"
-                        onLoadStart={() => handleImageLoadStart(rightPage.id)}
-                        onLoad={() => handleImageLoad(rightPage.id)}
-                        onError={() => handleImageError(rightPage.id, rightPage.image_url)}
-                      />
-                      <div className={`absolute bottom-2 text-xs text-gray-500 ${isMobile ? 'right-4' : 'right-4'}`}>
-                        {rightPage.page_number}
-                      </div>
-                    </div>
-                  ) : (
-                    <div 
-                      className="w-full h-full p-4 bg-amber-50 flex items-center justify-center"
-                      style={{ borderRadius: isMobile ? '8px' : '0 8px 8px 0' }}
-                    >
-                      <div className="text-amber-400 text-center">
-                        <div className="text-6xl font-serif mb-4">📚</div>
-                        <div className="text-lg font-serif">The End</div>
-                      </div>
+            {/* Right Page / Single Page (mobile) */}
+            <div className="relative" style={{ width: isMobile ? bookDimensions.width : bookDimensions.width / 2, height: bookDimensions.height }}>
+              {rightPage ? (
+                <div 
+                  className={`w-full h-full p-4 bg-white relative overflow-hidden`}
+                  style={{
+                    borderRadius: isMobile ? '8px' : '0 8px 8px 0',
+                    transform: animatedPage?.id === rightPage.id ? getFlipTransform() : '',
+                    boxShadow: animatedPage?.id === rightPage.id ? getFlipShadow() : '',
+                    transformOrigin: flipDirection === 'left' ? 'left center' : 'right center',
+                  }}
+                >
+                  {imageLoadingStates[rightPage.id] && (
+                    <div className="absolute inset-4 flex items-center justify-center bg-gray-100 rounded">
+                      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                     </div>
                   )}
+                  <img
+                    src={rightPage.image_url}
+                    alt={`Page ${rightPage.page_number}`}
+                    className="w-full h-full object-contain rounded"
+                    onLoadStart={() => handleImageLoadStart(rightPage.id)}
+                    onLoad={() => handleImageLoad(rightPage.id)}
+                    onError={() => handleImageError(rightPage.id, rightPage.image_url)}
+                  />
+                  <div className={`absolute bottom-2 text-xs text-gray-500 ${isMobile ? 'right-4' : 'right-4'}`}>
+                    {rightPage.page_number}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div 
+                  className="w-full h-full p-4 bg-amber-50 flex items-center justify-center"
+                  style={{ borderRadius: isMobile ? '8px' : '0 8px 8px 0' }}
+                >
+                  <div className="text-amber-400 text-center">
+                    <div className="text-6xl font-serif mb-4">📚</div>
+                    <div className="text-lg font-serif">The End</div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
-
-        {/* Navigation Arrows - Hidden on mobile when swiping is enabled */}
+        {/* Right Arrow */}
         {!isMobile && (
-          <>
-            <Button
-              onClick={handlePrevPage}
-              disabled={currentPage <= 0 || isFlipping}
-              className="absolute left-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-amber-200/80 hover:bg-amber-300/80 text-amber-800 shadow-lg border border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              size="sm"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-
-            <Button
-              onClick={handleNextPage}
-              disabled={currentPage >= pages.length - 1 || isFlipping}
-              className="absolute right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-amber-200/80 hover:bg-amber-300/80 text-amber-800 shadow-lg border border-amber-300 disabled:opacity-50 disabled:cursor-not-allowed"
-              size="sm"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </>
+          <Button
+            onClick={handleNextPage}
+            disabled={currentPage >= pages.length - 1 || isFlipping}
+            className="absolute right-0 z-20 translate-x-1/2 w-14 h-14 rounded-full bg-white/90 hover:bg-gray-100 text-gray-700 shadow-xl border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            size="lg"
+            aria-label="Next page"
+          >
+            <ChevronRight className="h-7 w-7" />
+          </Button>
         )}
-
-        {/* Mobile Navigation Dots */}
-        {isMobile && (
+      </div>
+      {/* Toolbar */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 bg-white/90 rounded-full shadow-lg border border-gray-200 px-6 py-2 backdrop-blur-md">
+        <Button onClick={handleZoomOut} variant="ghost" size="icon" className="text-gray-700" disabled={zoom <= 0.5} aria-label="Zoom out">
+          <ZoomOut className="h-5 w-5" />
+        </Button>
+        <Button onClick={handleResetZoom} variant="ghost" size="icon" className="text-gray-700" aria-label="Reset zoom">
+          <RotateCcw className="h-5 w-5" />
+        </Button>
+        <Button onClick={handleZoomIn} variant="ghost" size="icon" className="text-gray-700" disabled={zoom >= 3} aria-label="Zoom in">
+          <ZoomIn className="h-5 w-5" />
+        </Button>
+        <span className="text-xs text-gray-500 px-2">{Math.round(zoom * 100)}%</span>
+        <Button onClick={toggleFullscreen} variant="ghost" size="icon" className="text-gray-700" title={isFullscreen ? 'Exit fullscreen (F)' : 'Enter fullscreen (F)'} aria-label="Fullscreen">
+          {isFullscreen ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+        </Button>
+        <Button onClick={() => setSoundEnabled(!soundEnabled)} variant="ghost" size="icon" className="text-gray-700" aria-label="Toggle sound">
+          {soundEnabled ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+        </Button>
+        <Button onClick={handleRefresh} variant="ghost" size="icon" className="text-gray-700" aria-label="Refresh">
+          <RefreshCw className="h-5 w-5" />
+        </Button>
+        {onClose && (
+          <Button onClick={onClose} variant="ghost" size="icon" className="text-gray-700" aria-label="Back to Flipbooks">
+            <Home className="h-5 w-5" />
+          </Button>
+        )}
+      </div>
+      {/* Page number/progress */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 text-gray-500 text-sm bg-white/80 rounded-full px-4 py-1 shadow border border-gray-200">
+        {isMobile
+          ? `Page ${currentPage + 1} of ${pages.length}`
+          : `Spread ${Math.floor(currentPage / 2) + 1} of ${Math.ceil(pages.length / 2)}`}
+      </div>
+      {/* Mobile navigation dots and swipe hints remain as before */}
+      {isMobile && (
+        <>
           <div className={`absolute left-1/2 transform -translate-x-1/2 flex space-x-2 transition-all duration-300 ${
             isFullscreen ? 'bottom-8' : 'bottom-4'
           }`}>
@@ -859,36 +766,29 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
               />
             ))}
           </div>
-        )}
-
-        {/* Swipe Instructions for Mobile */}
-        {isMobile && (
           <div className={`absolute left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-xs transition-all duration-300 ${
             isFullscreen ? 'top-8' : 'top-4'
           }`}>
             {zoom > 1 ? 'Drag to pan • Pinch to zoom' : 'Swipe left/right to navigate • Pinch to zoom'}
           </div>
-        )}
-
-        {/* Mobile Visual Swipe Indicator */}
-        {isMobile && isDragging && zoom <= 1 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className={`bg-black/30 text-white px-4 py-2 rounded-full text-sm transition-opacity duration-200 ${
-              Math.abs(dragOffset.x) > 20 ? 'opacity-100' : 'opacity-50'
-            }`}>
-              {dragOffset.x > 20 ? '← Previous Page' : dragOffset.x < -20 ? 'Next Page →' : 'Swipe to navigate'}
+          {isDragging && zoom <= 1 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div className={`bg-black/30 text-white px-4 py-2 rounded-full text-sm transition-opacity duration-200 ${
+                Math.abs(dragOffset.x) > 20 ? 'opacity-100' : 'opacity-50'
+              }`}>
+                {dragOffset.x > 20 ? '← Previous Page' : dragOffset.x < -20 ? 'Next Page →' : 'Swipe to navigate'}
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Fullscreen Indicator */}
-        {isFullscreen && (
-          <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2">
-            <Maximize2 className="h-3 w-3" />
-            Fullscreen Mode
-          </div>
-        )}
-      </div>
+          )}
+        </>
+      )}
+      {/* Fullscreen Indicator */}
+      {isFullscreen && (
+        <div className="absolute top-4 right-4 bg-black/70 text-white px-3 py-1 rounded-full text-xs flex items-center gap-2">
+          <Maximize2 className="h-3 w-3" />
+          Fullscreen Mode
+        </div>
+      )}
     </div>
   );
 };
