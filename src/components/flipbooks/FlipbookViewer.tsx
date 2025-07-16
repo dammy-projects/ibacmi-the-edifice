@@ -277,6 +277,13 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
     }
   };
 
+  // Auto fullscreen if not already in fullscreen
+  useEffect(() => {
+    if (!document.fullscreenElement) {
+      toggleFullscreen();
+    }
+  });
+
   // Touch gesture handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isMobile) return;
@@ -745,6 +752,32 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
           </Button>
         )}
       </div>
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <div className="fixed bottom-0 left-0 w-full z-40 flex items-center justify-between bg-white/95 border-t border-gray-200 px-4 py-2 shadow-lg">
+          <Button
+            onClick={handlePrevPage}
+            disabled={currentPage <= 0 || isFlipping}
+            className="w-14 h-14 rounded-full bg-gray-100 text-gray-700 shadow border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            size="lg"
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="h-7 w-7" />
+          </Button>
+          <span className="text-base text-gray-700 font-medium">
+            Page {currentPage + 1} of {pages.length}
+          </span>
+          <Button
+            onClick={handleNextPage}
+            disabled={currentPage >= pages.length - 1 || isFlipping}
+            className="w-14 h-14 rounded-full bg-gray-100 text-gray-700 shadow border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            size="lg"
+            aria-label="Next page"
+          >
+            <ChevronRight className="h-7 w-7" />
+          </Button>
+        </div>
+      )}
       {/* Page number/progress */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 text-gray-500 text-sm bg-white/80 rounded-full px-4 py-1 shadow border border-gray-200">
         {isMobile
