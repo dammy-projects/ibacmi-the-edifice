@@ -54,6 +54,9 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const [flipProgress, setFlipProgress] = useState(0);
   const [flippingPage, setFlippingPage] = useState<number | null>(null);
 
+  // Add after other useState hooks
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+
   console.log('FlipbookViewer - flipbookId:', flipbookId);
   console.log('FlipbookViewer - pages:', pages);
   console.log('FlipbookViewer - isLoading:', isLoading);
@@ -173,6 +176,7 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
   const handleImageError = (pageId: string, imageUrl: string) => {
     console.error(`Failed to load image for page ${pageId}:`, imageUrl);
     setImageLoadingStates(prev => ({ ...prev, [pageId]: false }));
+    setFailedImages(prev => ({ ...prev, [pageId]: true }));
   };
 
   const handleRefresh = () => {
@@ -262,9 +266,9 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
       }
     } catch (error) {
       console.error('Fullscreen error:', error);
+      alert('Failed to enter fullscreen. Your browser may not support this feature or permission was denied.');
       // Fallback for browsers that don't support fullscreen API
       if (isMobile) {
-        // For mobile, we can try to use screen orientation API
         try {
           if (screen.orientation && 'lock' in screen.orientation) {
             await (screen.orientation as any).lock('landscape');
@@ -277,12 +281,12 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
     }
   };
 
-  // Auto fullscreen if not already in fullscreen
-  useEffect(() => {
-    if (!document.fullscreenElement) {
-      toggleFullscreen();
-    }
-  });
+  // Remove or comment out the auto-fullscreen useEffect to avoid permission errors
+  // useEffect(() => {
+  //   if (!document.fullscreenElement) {
+  //     toggleFullscreen();
+  //   }
+  // });
 
   // Touch gesture handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -474,6 +478,14 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
     return () => window.removeEventListener('keydown', handleKeydown);
   }, [currentPage, pages, isFlipping, isMobile, isFullscreen]);
 
+  // Utility to fix old Supabase Storage URLs
+  function fixSupabaseUrl(url: string) {
+    return url.replace(
+      '.storage.supabase.co/v1/object/public/',
+      '.supabase.co/storage/v1/object/public/'
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-100 flex items-center justify-center">
@@ -644,12 +656,23 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                       </div>
                     )}
                     <img
-                      src={leftPage.image_url}
+                      key={failedImages[leftPage.id] ? 'fallback-' + leftPage.id : leftPage.id}
+                      src={failedImages[leftPage.id] ? '/placeholder.svg' : fixSupabaseUrl(leftPage.image_url)}
                       alt={`Page ${leftPage.page_number}`}
                       className="w-full h-full object-contain rounded"
                       onLoadStart={() => handleImageLoadStart(leftPage.id)}
                       onLoad={() => handleImageLoad(leftPage.id)}
-                      onError={() => handleImageError(leftPage.id, leftPage.image_url)}
+                      onError={e => {
+                        if (!failedImages[leftPage.id]) {
+                          handleImageError(leftPage.id, leftPage.image_url);
+                        } else {
+                          e.currentTarget.style.display = 'none';
+                          const errorDiv = document.createElement('div');
+                          errorDiv.textContent = 'Image not available';
+                          errorDiv.className = 'w-full h-full flex items-center justify-center text-red-500';
+                          e.currentTarget.parentElement.appendChild(errorDiv);
+                        }
+                      }}
                     />
                     <div className="absolute bottom-2 left-4 text-xs text-gray-500">
                       {leftPage.page_number}
@@ -687,12 +710,23 @@ const FlipbookViewer = ({ flipbookId, onClose }: FlipbookViewerProps) => {
                     </div>
                   )}
                   <img
-                    src={rightPage.image_url}
+                    key={failedImages[rightPage.id] ? 'fallback-' + rightPage.id : rightPage.id}
+                    src={failedImages[rightPage.id] ? '/placeholder.svg' : fixSupabaseUrl(rightPage.image_url)}
                     alt={`Page ${rightPage.page_number}`}
                     className="w-full h-full object-contain rounded"
                     onLoadStart={() => handleImageLoadStart(rightPage.id)}
                     onLoad={() => handleImageLoad(rightPage.id)}
-                    onError={() => handleImageError(rightPage.id, rightPage.image_url)}
+                    onError={e => {
+                      if (!failedImages[rightPage.id]) {
+                        handleImageError(rightPage.id, rightPage.image_url);
+                      } else {
+                        e.currentTarget.style.display = 'none';
+                        const errorDiv = document.createElement('div');
+                        errorDiv.textContent = 'Image not available';
+                        errorDiv.className = 'w-full h-full flex items-center justify-center text-red-500';
+                        e.currentTarget.parentElement.appendChild(errorDiv);
+                      }
+                    }}
                   />
                   <div className={`absolute bottom-2 text-xs text-gray-500 ${isMobile ? 'right-4' : 'right-4'}`}>
                     {rightPage.page_number}
